@@ -40,6 +40,10 @@ function summarize(t: TemplateRecord) {
     };
 }
 
+function hasBody(t: TemplateRecord): boolean {
+    return Boolean(t.encodedTemplateYaml) || Boolean(t.templateJson);
+}
+
 function unwrap(res: unknown): TemplateRecord[] {
     const response = (res as { response?: unknown })?.response ?? res;
     if (Array.isArray(response)) return response as TemplateRecord[];
@@ -92,10 +96,31 @@ export function registerSubscriptionTemplateTools(
     server.tool(
         'subscription_templates_list',
         'List subscription templates (mihomo, xray-json, ...) with body sizes instead of bodies',
-        {},
-        async () => {
+        {
+            withSizes: z
+                .boolean()
+                .optional()
+                .describe('Resolve body sizes (default true). The list endpoint omits bodies, so each template is fetched once to report its real size'),
+        },
+        async ({ withSizes }) => {
             try {
-                return toolResult(unwrap(await client.getSubscriptionTemplates()).map(summarize));
+                const templates = unwrap(await client.getSubscriptionTemplates());
+                if (withSizes === false) return toolResult(templates.map(summarize));
+
+                // The list endpoint returns metadata only — without this pass every
+                // template would report an empty body, which reads as "template is
+                // blank" and invites deploying over the wrong one.
+                const resolved = await Promise.all(
+                    templates.map(async (t) => {
+                        if (hasBody(t)) return summarize(t);
+                        try {
+                            return summarize(unwrapOne(await client.getSubscriptionTemplate(t.uuid)));
+                        } catch {
+                            return { ...summarize(t), body: { kind: 'unknown' as const } };
+                        }
+                    }),
+                );
+                return toolResult(resolved);
             } catch (e) {
                 return toolError(e);
             }

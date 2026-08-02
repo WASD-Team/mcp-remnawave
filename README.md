@@ -360,11 +360,15 @@ Client-side templates the panel hands to apps (mihomo, xray-json, stash, clash, 
 
 | Tool | Description | Mode |
 |------|-------------|------|
-| `subscription_templates_list` | List templates with body sizes instead of bodies | read |
+| `subscription_templates_list` | List templates with body sizes instead of bodies (`withSizes: false` to skip the per-template fetch) | read |
 | `subscription_templates_get` | Get one template; `saveToPath` writes the body to a file | read |
 | `subscription_templates_update_from_file` | Deploy a template from a local file | write |
 
-Template bodies are big — a real mihomo template is ~18 KB, ~25 KB once base64-encoded — so these
+Note that the panel's list endpoint returns metadata only, with no bodies at all. `list` therefore
+fetches each template once to report a real size — otherwise every template reads as empty, which
+looks like "this template is blank" and invites deploying over the wrong one.
+
+Template bodies are big — a real mihomo template is ~48 KB, ~64 KB once base64-encoded — so these
 tools never pass a body through the model context by default: `list` and `get` report sizes,
 `get` can dump the body to a file, and the deploy tool reads the file itself. It also picks the
 right request field per template type (base64 YAML vs JSON) and runs sanity checks first, because a
