@@ -762,4 +762,16 @@ export class RemnawaveClient {
     async upsertUserMetadata(uuid: string, params: Record<string, unknown>) {
         return this.put(REST_API.METADATA.USER.UPSERT(uuid), params);
     }
+
+    async getSubscriptionTemplates() {
+        return this.get(REST_API.SUBSCRIPTION_TEMPLATE.GET_ALL);
+    }
+
+    async getSubscriptionTemplate(uuid: string) {
+        return this.get(REST_API.SUBSCRIPTION_TEMPLATE.GET(uuid));
+    }
+
+    async updateSubscriptionTemplate(params: Record<string, unknown>) {
+        return this.patch(REST_API.SUBSCRIPTION_TEMPLATE.UPDATE, params);
+    }
 }

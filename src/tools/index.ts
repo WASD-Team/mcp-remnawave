@@ -15,6 +15,7 @@ import { registerSnippetTools } from './snippets.js';
 import { registerExternalSquadTools } from './external-squads.js';
 import { registerSettingsTools } from './settings.js';
 import { registerSubPageConfigTools } from './subscription-page-configs.js';
+import { registerSubscriptionTemplateTools } from './subscription-templates.js';
 import { registerNodePluginTools } from './node-plugins.js';
 import { registerIpControlTools } from './ip-control.js';
 import { registerMetadataTools } from './metadata.js';
@@ -35,6 +36,7 @@ export function registerAllTools(server: McpServer, client: RemnawaveClient, rea
     registerExternalSquadTools(server, client, readonly);
     registerSettingsTools(server, client, readonly);
     registerSubPageConfigTools(server, client, readonly);
+    registerSubscriptionTemplateTools(server, client, readonly);
     registerNodePluginTools(server, client, readonly);
     registerIpControlTools(server, client, readonly);
     registerMetadataTools(server, client, readonly);

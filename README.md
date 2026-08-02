@@ -14,7 +14,7 @@ MCP server ([Model Context Protocol](https://modelcontextprotocol.io)) providing
 
 ### Features
 
-- **153 tools** — full management of users, nodes, hosts, subscriptions, squads, HWID, config profiles, inbounds, API tokens, billing, snippets, external squads, settings, subscription page configs, node plugins, IP control, and metadata
+- **156 tools** — full management of users, nodes, hosts, subscriptions, squads, HWID, config profiles, inbounds, API tokens, billing, snippets, external squads, settings, subscription page configs, subscription templates, node plugins, IP control, and metadata
 - **3 resources** — real-time panel stats, node status, health checks
 - **5 prompts** — guided workflows for common tasks
 - **Readonly mode** — restrict to 69 read-only tools for safe monitoring
@@ -88,6 +88,7 @@ In readonly mode, the available tools are reduced from 153 to 69:
 | External Squads (2) | `external_squads_list`, `external_squads_get` |
 | Settings (1) | `settings_get` |
 | Sub Page Configs (2) | `sub_page_configs_list`, `sub_page_configs_get` |
+| Subscription Templates (2) | `subscription_templates_list`, `subscription_templates_get` |
 | Node Plugins (4) | `node_plugins_list`, `node_plugins_get`, `node_plugins_torrent_reports`, `node_plugins_torrent_stats` |
 | IP Control (4) | `ip_control_fetch_ips`, `ip_control_get_fetch_ips_result`, `ip_control_fetch_users_ips`, `ip_control_get_fetch_users_ips_result` |
 | Metadata (2) | `metadata_node_get`, `metadata_user_get` |
@@ -352,6 +353,22 @@ Environment variables are passed via `.env` file or `docker-compose.yml`.
 | `sub_page_configs_delete` | Delete subscription page config | write |
 | `sub_page_configs_reorder` | Reorder subscription page configs | write |
 | `sub_page_configs_clone` | Clone subscription page config | write |
+
+#### Subscription Templates (3 tools)
+
+Client-side templates the panel hands to apps (mihomo, xray-json, stash, clash, sing-box, xray-base64).
+
+| Tool | Description | Mode |
+|------|-------------|------|
+| `subscription_templates_list` | List templates with body sizes instead of bodies | read |
+| `subscription_templates_get` | Get one template; `saveToPath` writes the body to a file | read |
+| `subscription_templates_update_from_file` | Deploy a template from a local file | write |
+
+Template bodies are big — a real mihomo template is ~18 KB, ~25 KB once base64-encoded — so these
+tools never pass a body through the model context by default: `list` and `get` report sizes,
+`get` can dump the body to a file, and the deploy tool reads the file itself. It also picks the
+right request field per template type (base64 YAML vs JSON) and runs sanity checks first, because a
+malformed body reaches every client on their next subscription refresh.
 
 #### Node Plugins (11 tools)
 
