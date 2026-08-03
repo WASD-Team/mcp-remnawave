@@ -23,13 +23,13 @@ export function registerUserTools(server: McpServer, client: RemnawaveClient, re
 
     server.tool(
         'users_get',
-        'Get a specific Remnawave user by their UUID',
+        'Get a specific Remnawave user by their numeric ID',
         {
-            uuid: z.string().describe('User UUID'),
+            userId: z.string().describe('Numeric user ID (API 3.x has no user uuid)'),
         },
-        async ({ uuid }) => {
+        async ({ userId }) => {
             try {
-                const result = await client.getUserByUuid(uuid);
+                const result = await client.getUserById(userId);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -118,14 +118,14 @@ export function registerUserTools(server: McpServer, client: RemnawaveClient, re
     );
 
     server.tool(
-        'users_get_by_subscription_uuid',
-        'Get a Remnawave user by subscription UUID',
+        'users_get_by_short_uuid',
+        'Get a Remnawave user by subscription short UUID (API 3.x dropped by-subscription-uuid)',
         {
-            subscriptionUuid: z.string().describe('Subscription UUID'),
+            shortUuid: z.string().describe('Subscription short UUID'),
         },
-        async ({ subscriptionUuid }) => {
+        async ({ shortUuid }) => {
             try {
-                const result = await client.getUserBySubscriptionUuid(subscriptionUuid);
+                const result = await client.getUserByShortUuid(shortUuid);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);

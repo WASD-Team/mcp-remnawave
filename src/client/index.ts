@@ -82,8 +82,8 @@ export class RemnawaveClient {
         );
     }
 
-    async getUserByUuid(uuid: string) {
-        return this.get(REST_API.USERS.GET_BY_UUID(uuid));
+    async getUserById(userId: string) {
+        return this.get(REST_API.USERS.GET_BY_ID(userId));
     }
 
     async getUserByUsername(username: string) {
@@ -94,24 +94,26 @@ export class RemnawaveClient {
         return this.get(REST_API.USERS.GET_BY.SHORT_UUID(shortUuid));
     }
 
+    // API 3.x: точечные by-telegram-id / by-email / by-tag удалены.
+    // Остался users/stream с фильтрами и курсорной пагинацией, поэтому
+    // ответ здесь — страница {users, nextCursor, hasMore}, а не один юзер.
+    async getUsersByFilter(filter: Record<string, string | number>) {
+        const query = new URLSearchParams(
+            Object.entries(filter).map(([key, value]) => [key, String(value)]),
+        ).toString();
+        return this.get(`${REST_API.USERS.STREAM}?${query}`);
+    }
+
     async getUserByTelegramId(telegramId: string) {
-        return this.get(REST_API.USERS.GET_BY.TELEGRAM_ID(telegramId));
+        return this.getUsersByFilter({ telegramId });
     }
 
     async getUserByEmail(email: string) {
-        return this.get(REST_API.USERS.GET_BY.EMAIL(email));
+        return this.getUsersByFilter({ email });
     }
 
     async getUserByTag(tag: string) {
-        return this.get(REST_API.USERS.GET_BY.TAG(tag));
-    }
-
-    async getUserById(id: string) {
-        return this.get(REST_API.USERS.GET_BY.ID(id));
-    }
-
-    async getUserBySubscriptionUuid(subscriptionUuid: string) {
-        return this.get(REST_API.USERS.GET_BY.SUBSCRIPTION_UUID(subscriptionUuid));
+        return this.getUsersByFilter({ tag });
     }
 
     async getUserTags() {
@@ -290,12 +292,14 @@ export class RemnawaveClient {
         return this.post(REST_API.HOSTS.BULK.DELETE_HOSTS, params);
     }
 
+    // API 3.x: отдельные bulk/set-inbound и bulk/set-port убраны —
+    // всё через PATCH bulk/update с телом {uuids, <любые поля хоста>}.
     async bulkSetHostInbound(params: Record<string, unknown>) {
-        return this.post(REST_API.HOSTS.BULK.SET_INBOUND, params);
+        return this.patch(REST_API.HOSTS.BULK.UPDATE, params);
     }
 
     async bulkSetHostPort(params: Record<string, unknown>) {
-        return this.post(REST_API.HOSTS.BULK.SET_PORT, params);
+        return this.patch(REST_API.HOSTS.BULK.UPDATE, params);
     }
 
     // System
@@ -344,8 +348,8 @@ export class RemnawaveClient {
         );
     }
 
-    async getSubscriptionByUuid(uuid: string) {
-        return this.get(REST_API.SUBSCRIPTIONS.GET_BY.UUID(uuid));
+    async getSubscriptionByUserId(userId: string) {
+        return this.get(REST_API.SUBSCRIPTIONS.GET_BY.ID(userId));
     }
 
     async getSubscriptionByUsername(username: string) {
@@ -364,8 +368,8 @@ export class RemnawaveClient {
         return this.get(REST_API.SUBSCRIPTIONS.SUBPAGE.GET_CONFIG(shortUuid));
     }
 
-    async getConnectionKeysByUuid(uuid: string) {
-        return this.get(REST_API.SUBSCRIPTIONS.GET_CONNECTION_KEYS_BY_UUID(uuid));
+    async getConnectionKeysByUserId(userId: string) {
+        return this.get(REST_API.SUBSCRIPTIONS.GET_CONNECTION_KEYS_BY_USER_ID(userId));
     }
 
     async getSubscriptionInfo(shortUuid: string) {
@@ -499,8 +503,8 @@ export class RemnawaveClient {
         return this.get(REST_API.BANDWIDTH_STATS.NODES.GET_REALTIME);
     }
 
-    async getUserBandwidthByUuid(uuid: string) {
-        return this.get(REST_API.BANDWIDTH_STATS.USERS.GET_BY_UUID(uuid));
+    async getUserBandwidthByUserId(userId: string) {
+        return this.get(REST_API.BANDWIDTH_STATS.USERS.GET_BY_ID(userId));
     }
 
     // Auth
@@ -723,26 +727,26 @@ export class RemnawaveClient {
         return this.post(REST_API.NODE_PLUGINS.TORRENT_BLOCKER.TRUNCATE_REPORTS);
     }
 
-    // IP Control
+    // Connections (в API 3.x модуль ip-control переименован в connections)
 
-    async fetchIps(uuid: string) {
-        return this.post(REST_API.IP_CONTROL.FETCH_IPS(uuid));
+    async fetchIps(userId: string) {
+        return this.post(REST_API.CONNECTIONS.CONNECTIONS_BY_USER(userId));
     }
 
     async getFetchIpsResult(jobId: string) {
-        return this.get(REST_API.IP_CONTROL.GET_FETCH_IPS_RESULT(jobId));
+        return this.get(REST_API.CONNECTIONS.CONNECTIONS_BY_USER_RESULT(jobId));
     }
 
     async dropConnections(params: Record<string, unknown>) {
-        return this.post(REST_API.IP_CONTROL.DROP_CONNECTIONS, params);
+        return this.post(REST_API.CONNECTIONS.DROP_CONNECTIONS, params);
     }
 
     async fetchUsersIps(nodeUuid: string) {
-        return this.post(REST_API.IP_CONTROL.FETCH_USERS_IPS(nodeUuid));
+        return this.post(REST_API.CONNECTIONS.CONNECTIONS_BY_NODE(nodeUuid));
     }
 
     async getFetchUsersIpsResult(jobId: string) {
-        return this.get(REST_API.IP_CONTROL.GET_FETCH_USERS_IPS_RESULT(jobId));
+        return this.get(REST_API.CONNECTIONS.CONNECTIONS_BY_NODE_RESULT(jobId));
     }
 
     // Metadata
