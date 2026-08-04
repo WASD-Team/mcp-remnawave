@@ -132,24 +132,24 @@ export class RemnawaveClient {
         return this.patch(REST_API.USERS.UPDATE, params);
     }
 
-    async deleteUser(uuid: string) {
-        return this.delete(REST_API.USERS.DELETE(uuid));
+    async deleteUser(userId: string) {
+        return this.delete(REST_API.USERS.DELETE(userId));
     }
 
-    async enableUser(uuid: string) {
-        return this.post(REST_API.USERS.ACTIONS.ENABLE(uuid));
+    async enableUser(userId: string) {
+        return this.post(REST_API.USERS.ACTIONS.ENABLE(userId));
     }
 
-    async disableUser(uuid: string) {
-        return this.post(REST_API.USERS.ACTIONS.DISABLE(uuid));
+    async disableUser(userId: string) {
+        return this.post(REST_API.USERS.ACTIONS.DISABLE(userId));
     }
 
-    async revokeUserSubscription(uuid: string) {
-        return this.post(REST_API.USERS.ACTIONS.REVOKE_SUBSCRIPTION(uuid));
+    async revokeUserSubscription(userId: string) {
+        return this.post(REST_API.USERS.ACTIONS.REVOKE_SUBSCRIPTION(userId));
     }
 
-    async resetUserTraffic(uuid: string) {
-        return this.post(REST_API.USERS.ACTIONS.RESET_TRAFFIC(uuid));
+    async resetUserTraffic(userId: string) {
+        return this.post(REST_API.USERS.ACTIONS.RESET_TRAFFIC(userId));
     }
 
     async bulkDeleteUsersByStatus(params: Record<string, unknown>) {
