@@ -460,8 +460,8 @@ export class RemnawaveClient {
 
     // HWID
 
-    async getUserHwidDevices(userUuid: string) {
-        return this.get(REST_API.HWID.GET_USER_HWID_DEVICES(userUuid));
+    async getUserHwidDevices(userId: string) {
+        return this.get(REST_API.HWID.GET_USER_HWID_DEVICES(userId));
     }
 
     async getAllHwidDevices() {
@@ -480,16 +480,18 @@ export class RemnawaveClient {
         return this.post(REST_API.HWID.CREATE_USER_HWID_DEVICE, params);
     }
 
-    async deleteHwidDevice(userUuid: string, hwid: string) {
+    // API 3.x: create/delete-user-hwid-device.command требуют числовой userId
+    // в теле запроса, а не userUuid — иначе панель отклонит запрос валидацией.
+    async deleteHwidDevice(userId: number, hwid: string) {
         return this.post(REST_API.HWID.DELETE_USER_HWID_DEVICE, {
-            userUuid,
+            userId,
             hwid,
         });
     }
 
-    async deleteAllUserHwidDevices(userUuid: string) {
+    async deleteAllUserHwidDevices(userId: number) {
         return this.post(REST_API.HWID.DELETE_ALL_USER_HWID_DEVICES, {
-            userUuid,
+            userId,
         });
     }
 
@@ -759,12 +761,12 @@ export class RemnawaveClient {
         return this.put(REST_API.METADATA.NODE.UPSERT(uuid), params);
     }
 
-    async getUserMetadata(uuid: string) {
-        return this.get(REST_API.METADATA.USER.GET(uuid));
+    async getUserMetadata(userId: string) {
+        return this.get(REST_API.METADATA.USER.GET(userId));
     }
 
-    async upsertUserMetadata(uuid: string, params: Record<string, unknown>) {
-        return this.put(REST_API.METADATA.USER.UPSERT(uuid), params);
+    async upsertUserMetadata(userId: string, params: Record<string, unknown>) {
+        return this.put(REST_API.METADATA.USER.UPSERT(userId), params);
     }
 
     async getSubscriptionTemplates() {
