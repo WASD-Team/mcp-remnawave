@@ -118,22 +118,6 @@ export function registerUserTools(server: McpServer, client: RemnawaveClient, re
     );
 
     server.tool(
-        'users_get_by_short_uuid',
-        'Get a Remnawave user by subscription short UUID (API 3.x dropped by-subscription-uuid)',
-        {
-            shortUuid: z.string().describe('Subscription short UUID'),
-        },
-        async ({ shortUuid }) => {
-            try {
-                const result = await client.getUserByShortUuid(shortUuid);
-                return toolResult(result);
-            } catch (e) {
-                return toolError(e);
-            }
-        },
-    );
-
-    server.tool(
         'users_tags_list',
         'List all user tags',
         {},
