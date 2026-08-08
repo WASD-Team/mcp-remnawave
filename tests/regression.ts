@@ -12,6 +12,8 @@ import { RemnawaveClient } from '../src/client/index.js';
 import { registerHostTools } from '../src/tools/hosts.js';
 import { registerNodePluginTools } from '../src/tools/node-plugins.js';
 import { registerSettingsTools } from '../src/tools/settings.js';
+import { registerSquadTools } from '../src/tools/squads.js';
+import { registerExternalSquadTools } from '../src/tools/external-squads.js';
 
 type Handler = (args: any) => Promise<any>;
 const handlers = new Map<string, Handler>();
@@ -42,6 +44,8 @@ const client = new RemnawaveClient({
 registerHostTools(fakeServer, client, false);
 registerNodePluginTools(fakeServer, client, false);
 registerSettingsTools(fakeServer, client, false);
+registerSquadTools(fakeServer, client, false);
+registerExternalSquadTools(fakeServer, client, false);
 
 let failed = 0;
 function check(name: string, condition: boolean, detail = '') {
@@ -172,6 +176,40 @@ check('hwidSettings сохранены', settingsWrite?.body?.hwidSettings?.maxD
 check('uuid отправлен', settingsWrite?.body?.uuid === 'settings-1');
 check('createdAt/updatedAt не отправлены',
     !('createdAt' in (settingsWrite?.body ?? {})) && !('updatedAt' in (settingsWrite?.body ?? {})));
+
+// --- 6. сквады: поштучно ≠ «весь парк» --------------------------------------
+// add-users/remove-users в 3.x означают «все пользователи панели» и тела не
+// принимают. Слать туда список — молча раздать доступ всему парку.
+console.log('\n6. Сквады — поштучные действия отделены от действий над всем парком');
+requests.length = 0;
+nextResponse = { response: {} };
+await handlers.get('squads_add_users')!({ squadUuid: 'squad-1', userIds: [118] });
+check('add идёт на add-many-users', requests[0]?.url.endsWith('/bulk-actions/add-many-users'), requests[0]?.url);
+check('add методом POST', requests[0]?.method === 'POST');
+check('userIds числами в теле', JSON.stringify(requests[0]?.body) === '{"userIds":[118]}', JSON.stringify(requests[0]?.body));
+
+requests.length = 0;
+await handlers.get('squads_remove_users')!({ squadUuid: 'squad-1', userIds: [118] });
+check('remove идёт на remove-many-users', requests[0]?.url.endsWith('/bulk-actions/remove-many-users'), requests[0]?.url);
+check('remove методом DELETE', requests[0]?.method === 'DELETE', `пришло ${requests[0]?.method}`);
+check('userIds числами в теле', JSON.stringify(requests[0]?.body) === '{"userIds":[118]}');
+
+requests.length = 0;
+await handlers.get('squads_add_all_users')!({ squadUuid: 'squad-1' });
+check('«весь парк» идёт на add-users без тела',
+    requests[0]?.url.endsWith('/bulk-actions/add-users') && requests[0]?.body === undefined, requests[0]?.url);
+
+requests.length = 0;
+await handlers.get('squads_remove_all_users')!({ squadUuid: 'squad-1' });
+check('«весь парк» remove — DELETE на remove-users',
+    requests[0]?.method === 'DELETE' && requests[0]?.url.endsWith('/bulk-actions/remove-users'));
+
+requests.length = 0;
+await handlers.get('external_squads_remove_all_users')!({ squadUuid: 'ext-1' });
+check('внешний сквад: remove методом DELETE', requests[0]?.method === 'DELETE', `пришло ${requests[0]?.method}`);
+
+check('поштучных тулзов для внешних сквадов нет',
+    !handlers.has('external_squads_add_users') && !handlers.has('external_squads_remove_users'));
 
 console.log(failed === 0 ? '\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : `\nПРОВАЛОВ: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);

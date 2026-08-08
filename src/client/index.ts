@@ -88,8 +88,8 @@ export class RemnawaveClient {
         return this.request<T>('PUT', path, body);
     }
 
-    private async delete<T = unknown>(path: string): Promise<T> {
-        return this.request<T>('DELETE', path);
+    private async delete<T = unknown>(path: string, body?: unknown): Promise<T> {
+        return this.request<T>('DELETE', path, body);
     }
 
     // Users
@@ -106,6 +106,10 @@ export class RemnawaveClient {
 
     async getUserByUsername(username: string) {
         return this.get(REST_API.USERS.GET_BY.USERNAME(username));
+    }
+
+    async getUserSubscriptionRequestHistory(userId: string) {
+        return this.get(REST_API.USERS.SUBSCRIPTION_REQUEST_HISTORY(userId));
     }
 
     async getUserByShortUuid(shortUuid: string) {
@@ -464,18 +468,30 @@ export class RemnawaveClient {
         return this.delete(REST_API.INTERNAL_SQUADS.DELETE(uuid));
     }
 
-    async addUsersToSquad(squadUuid: string, userUuids: string[]) {
+    // ⚠️ add-users / remove-users в 3.x — это действия НАД ВСЕМ ПАРКОМ
+    // («Add all users to internal squad»), тела они не принимают. Для списка
+    // пользователей есть отдельные add-many-users / remove-many-users, и
+    // userIds там строго числовые.
+    async addUsersToSquad(squadUuid: string, userIds: number[]) {
         return this.post(
-            REST_API.INTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS(squadUuid),
-            { userUuids },
+            REST_API.INTERNAL_SQUADS.BULK_ACTIONS.ADD_MANY_USERS(squadUuid),
+            { userIds },
         );
     }
 
-    async removeUsersFromSquad(squadUuid: string, userUuids: string[]) {
-        return this.post(
-            REST_API.INTERNAL_SQUADS.BULK_ACTIONS.REMOVE_USERS(squadUuid),
-            { userUuids },
+    async removeUsersFromSquad(squadUuid: string, userIds: number[]) {
+        return this.delete(
+            REST_API.INTERNAL_SQUADS.BULK_ACTIONS.REMOVE_MANY_USERS(squadUuid),
+            { userIds },
         );
+    }
+
+    async addAllUsersToSquad(squadUuid: string) {
+        return this.post(REST_API.INTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS(squadUuid));
+    }
+
+    async removeAllUsersFromSquad(squadUuid: string) {
+        return this.delete(REST_API.INTERNAL_SQUADS.BULK_ACTIONS.REMOVE_USERS(squadUuid));
     }
 
     // HWID
@@ -521,10 +537,6 @@ export class RemnawaveClient {
 
     async getNodesBandwidth() {
         return this.get(REST_API.BANDWIDTH_STATS.NODES.GET);
-    }
-
-    async getNodesRealtimeBandwidth() {
-        return this.get(REST_API.BANDWIDTH_STATS.NODES.GET_REALTIME);
     }
 
     async getUserBandwidthByUserId(userId: string) {
@@ -647,18 +659,14 @@ export class RemnawaveClient {
         return this.delete(REST_API.EXTERNAL_SQUADS.DELETE(uuid));
     }
 
-    async addUsersToExternalSquad(squadUuid: string, userUuids: string[]) {
-        return this.post(
-            REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS(squadUuid),
-            { userUuids },
-        );
+    // У внешних сквадов «поштучного» варианта в 3.x нет вовсе: только
+    // add-users / remove-users над всем парком, оба без тела.
+    async addAllUsersToExternalSquad(squadUuid: string) {
+        return this.post(REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.ADD_USERS(squadUuid));
     }
 
-    async removeUsersFromExternalSquad(squadUuid: string, userUuids: string[]) {
-        return this.post(
-            REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.REMOVE_USERS(squadUuid),
-            { userUuids },
-        );
+    async removeAllUsersFromExternalSquad(squadUuid: string) {
+        return this.delete(REST_API.EXTERNAL_SQUADS.BULK_ACTIONS.REMOVE_USERS(squadUuid));
     }
 
     async reorderExternalSquads(params: Record<string, unknown>) {
@@ -758,7 +766,7 @@ export class RemnawaveClient {
     }
 
     async truncateTorrentBlockerReports() {
-        return this.post(REST_API.NODE_PLUGINS.TORRENT_BLOCKER.TRUNCATE_REPORTS);
+        return this.delete(REST_API.NODE_PLUGINS.TORRENT_BLOCKER.TRUNCATE_REPORTS);
     }
 
     // Connections (в API 3.x модуль ip-control переименован в connections)

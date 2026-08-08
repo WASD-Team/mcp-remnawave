@@ -54,6 +54,22 @@ export function registerUserTools(server: McpServer, client: RemnawaveClient, re
     );
 
     server.tool(
+        'users_subscription_request_history',
+        'Subscription request history of one user: which client fetched the config, when, from which IP',
+        {
+            userId: z.string().describe('Numeric user ID (API 3.x has no user uuid)'),
+        },
+        async ({ userId }) => {
+            try {
+                const result = await client.getUserSubscriptionRequestHistory(userId);
+                return toolResult(result);
+            } catch (e) {
+                return toolError(e);
+            }
+        },
+    );
+
+    server.tool(
         'users_get_by_short_uuid',
         'Get a Remnawave user by their short UUID',
         {

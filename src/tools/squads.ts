@@ -95,19 +95,16 @@ export function registerSquadTools(
 
     server.tool(
         'squads_add_users',
-        'Add users to an internal squad',
+        'Add the listed users to an internal squad',
         {
             squadUuid: z.string().describe('Squad UUID'),
-            userUuids: z
-                .array(z.string())
-                .describe('Array of user UUIDs to add'),
+            userIds: z
+                .array(z.number())
+                .describe('Numeric user IDs to add (API 3.x has no user uuid)'),
         },
-        async ({ squadUuid, userUuids }) => {
+        async ({ squadUuid, userIds }) => {
             try {
-                const result = await client.addUsersToSquad(
-                    squadUuid,
-                    userUuids,
-                );
+                const result = await client.addUsersToSquad(squadUuid, userIds);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -117,20 +114,50 @@ export function registerSquadTools(
 
     server.tool(
         'squads_remove_users',
-        'Remove users from an internal squad',
+        'Remove the listed users from an internal squad',
         {
             squadUuid: z.string().describe('Squad UUID'),
-            userUuids: z
-                .array(z.string())
-                .describe('Array of user UUIDs to remove'),
+            userIds: z
+                .array(z.number())
+                .describe('Numeric user IDs to remove (API 3.x has no user uuid)'),
         },
-        async ({ squadUuid, userUuids }) => {
+        async ({ squadUuid, userIds }) => {
             try {
-                const result = await client.removeUsersFromSquad(
-                    squadUuid,
-                    userUuids,
-                );
+                const result = await client.removeUsersFromSquad(squadUuid, userIds);
                 return toolResult(result);
+            } catch (e) {
+                return toolError(e);
+            }
+        },
+    );
+
+    // Действия над всем парком вынесены в отдельные тулзы с говорящими именами:
+    // в API это те же bulk-actions/add-users и remove-users, которые легко
+    // принять за «добавить перечисленных» — они не принимают списка вообще.
+    server.tool(
+        'squads_add_all_users',
+        'DANGER: add EVERY user of the panel to an internal squad',
+        {
+            squadUuid: z.string().describe('Squad UUID'),
+        },
+        async ({ squadUuid }) => {
+            try {
+                return toolResult(await client.addAllUsersToSquad(squadUuid));
+            } catch (e) {
+                return toolError(e);
+            }
+        },
+    );
+
+    server.tool(
+        'squads_remove_all_users',
+        'DANGER: remove EVERY user from an internal squad',
+        {
+            squadUuid: z.string().describe('Squad UUID'),
+        },
+        async ({ squadUuid }) => {
+            try {
+                return toolResult(await client.removeAllUsersFromSquad(squadUuid));
             } catch (e) {
                 return toolError(e);
             }
