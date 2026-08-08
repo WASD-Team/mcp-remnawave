@@ -48,7 +48,11 @@ export class RemnawaveClient {
             }
             throw new Error(`Remnawave API error: ${errorMessage}`);
         }
-        return res.json() as Promise<T>;
+        // На DELETE панель отвечает пустым телом. Безусловный res.json() падал
+        // на нём с «Unexpected end of JSON input», и удавшееся удаление
+        // выглядело как ошибка — при том что объект уже был удалён.
+        const text = await res.text();
+        return (text ? JSON.parse(text) : null) as T;
     }
 
     private async get<T = unknown>(path: string): Promise<T> {

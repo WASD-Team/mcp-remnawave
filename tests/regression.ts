@@ -30,8 +30,9 @@ globalThis.fetch = (async (url: any, opts: any) => {
         url: String(url),
         body: opts?.body ? JSON.parse(opts.body) : undefined,
     });
-    return new Response(JSON.stringify(nextResponse), {
-        status: 200,
+    // nextResponse === undefined изображает пустое тело: так отвечает DELETE.
+    return new Response(nextResponse === undefined ? null : JSON.stringify(nextResponse), {
+        status: nextResponse === undefined ? 204 : 200,
         headers: { 'content-type': 'application/json' },
     });
 }) as any;
@@ -210,6 +211,16 @@ check('внешний сквад: remove методом DELETE', requests[0]?.me
 
 check('поштучных тулзов для внешних сквадов нет',
     !handlers.has('external_squads_add_users') && !handlers.has('external_squads_remove_users'));
+
+// --- 7. пустой ответ на DELETE не должен выглядеть как ошибка ---------------
+console.log('\n7. DELETE с пустым телом');
+requests.length = 0;
+nextResponse = undefined;
+const deleted = await handlers.get('hosts_delete')!({ uuid: 'host-1' });
+check('удаление не падает на разборе ответа', deleted?.isError !== true,
+    JSON.stringify(deleted?.content?.[0]?.text ?? '').slice(0, 80));
+check('запрос всё-таки ушёл', requests[0]?.method === 'DELETE');
+nextResponse = {};
 
 console.log(failed === 0 ? '\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : `\nПРОВАЛОВ: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);
