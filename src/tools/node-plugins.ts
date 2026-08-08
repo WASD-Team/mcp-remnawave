@@ -30,11 +30,32 @@ export function registerNodePluginTools(server: McpServer, client: RemnawaveClie
         try { return toolResult(await client.createNodePlugin(params)); } catch (e) { return toolError(e); }
     });
 
-    server.tool('node_plugins_update', 'Update a node plugin', {
+    server.tool('node_plugins_update', 'Update a node plugin (name and/or pluginConfig)', {
         uuid: z.string().describe('Plugin UUID'),
         name: z.string().optional().describe('New name'),
-    }, async (params) => {
-        try { return toolResult(await client.updateNodePlugin(params)); } catch (e) { return toolError(e); }
+        pluginConfig: z
+            .record(z.unknown())
+            .optional()
+            .describe('Plugin config object: torrentBlocker, ingressFilter, egressFilter, connectionDrop, sharedLists'),
+    }, async ({ uuid, name, pluginConfig }) => {
+        try {
+            // Как и у хостов, PATCH здесь полнотельный: передать один pluginConfig
+            // значит стереть name, и наоборот. Читаем текущий плагин и мёржим.
+            const current = (await client.getNodePlugin(uuid)) as {
+                response?: Record<string, unknown>;
+            };
+            const plugin = current?.response;
+            if (!plugin) {
+                throw new Error(`Node plugin ${uuid} not found, refusing to update blindly`);
+            }
+
+            const body: Record<string, unknown> = {
+                uuid,
+                name: name ?? plugin.name,
+                pluginConfig: pluginConfig ?? plugin.pluginConfig,
+            };
+            return toolResult(await client.updateNodePlugin(body));
+        } catch (e) { return toolError(e); }
     });
 
     server.tool('node_plugins_delete', 'Delete a node plugin', {

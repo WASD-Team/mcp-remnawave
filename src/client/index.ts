@@ -55,6 +55,24 @@ export class RemnawaveClient {
         return this.request<T>('GET', path);
     }
 
+    /**
+     * Query-строка для листингов панели (start/size/filters/sorting).
+     * Скалярные значения идут как есть, объекты и массивы — JSON'ом: фильтры и
+     * сортировка объявлены в контракте как JSON-строка, которую панель парсит.
+     */
+    private buildQuery(params: Record<string, unknown>): string {
+        const search = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) {
+            if (value === undefined || value === null) continue;
+            search.set(
+                key,
+                typeof value === 'object' ? JSON.stringify(value) : String(value),
+            );
+        }
+        const query = search.toString();
+        return query ? `?${query}` : '';
+    }
+
     private async post<T = unknown>(path: string, body?: unknown): Promise<T> {
         return this.request<T>('POST', path, body);
     }
@@ -376,8 +394,10 @@ export class RemnawaveClient {
         return this.get(REST_API.SUBSCRIPTION.GET_INFO(shortUuid));
     }
 
-    async getSubscriptionRequestHistory() {
-        return this.get(REST_API.SUBSCRIPTION_REQUEST_HISTORY.GET);
+    async getSubscriptionRequestHistory(params: Record<string, unknown> = {}) {
+        return this.get(
+            `${REST_API.SUBSCRIPTION_REQUEST_HISTORY.GET}${this.buildQuery(params)}`,
+        );
     }
 
     async getSubscriptionRequestHistoryStats() {
@@ -464,8 +484,10 @@ export class RemnawaveClient {
         return this.get(REST_API.HWID.GET_USER_HWID_DEVICES(userId));
     }
 
-    async getAllHwidDevices() {
-        return this.get(REST_API.HWID.GET_ALL_HWID_DEVICES);
+    async getAllHwidDevices(params: Record<string, unknown> = {}) {
+        return this.get(
+            `${REST_API.HWID.GET_ALL_HWID_DEVICES}${this.buildQuery(params)}`,
+        );
     }
 
     async getHwidStats() {
@@ -647,6 +669,16 @@ export class RemnawaveClient {
 
     async getSettings() {
         return this.get(REST_API.REMNAAWAVE_SETTINGS.GET);
+    }
+
+    // Настройки подписки — отдельный контроллер, не /api/settings: там живут
+    // customResponseHeaders, customRemarks, hwidSettings и правила SRR.
+    async getSubscriptionSettings() {
+        return this.get(REST_API.SUBSCRIPTION_SETTINGS.GET);
+    }
+
+    async updateSubscriptionSettings(params: Record<string, unknown>) {
+        return this.patch(REST_API.SUBSCRIPTION_SETTINGS.UPDATE, params);
     }
 
     async updateSettings(params: Record<string, unknown>) {

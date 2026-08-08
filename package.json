@@ -10,7 +10,9 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "esbuild tests/regression.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/regression.mjs --external:@modelcontextprotocol/sdk --log-level=error && node node_modules/.cache/regression.mjs"
   },
   "keywords": [
     "mcp",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "esbuild": "^0.27.0",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0"
   },

@@ -98,7 +98,10 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
                 .enum(['DEFAULT', 'TLS', 'NONE'])
                 .optional()
                 .describe('Security layer'),
-            tag: z.string().optional().describe('Host tag'),
+            tags: z
+                .array(z.string())
+                .optional()
+                .describe('Host tags. Panel accepts A-Z, 0-9, _ and : only'),
             serverDescription: z
                 .string()
                 .optional()
@@ -127,10 +130,6 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
                 .boolean()
                 .optional()
                 .describe('Keep SNI field blank'),
-            allowInsecure: z
-                .boolean()
-                .optional()
-                .describe('Allow insecure connections'),
             vlessRouteId: z
                 .number()
                 .optional()
@@ -168,7 +167,7 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
                     body.isHidden = params.isHidden;
                 if (params.securityLayer !== undefined)
                     body.securityLayer = params.securityLayer;
-                if (params.tag !== undefined) body.tag = params.tag;
+                if (params.tags !== undefined) body.tags = params.tags;
                 if (params.serverDescription !== undefined)
                     body.serverDescription = params.serverDescription;
                 if (params.nodes !== undefined) body.nodes = params.nodes;
@@ -182,8 +181,6 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
                     body.overrideSniFromAddress = params.overrideSniFromAddress;
                 if (params.keepSniBlank !== undefined)
                     body.keepSniBlank = params.keepSniBlank;
-                if (params.allowInsecure !== undefined)
-                    body.allowInsecure = params.allowInsecure;
                 if (params.vlessRouteId !== undefined)
                     body.vlessRouteId = params.vlessRouteId;
                 if (params.shuffleHost !== undefined)
@@ -242,7 +239,10 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
                 .enum(['DEFAULT', 'TLS', 'NONE'])
                 .optional()
                 .describe('New security layer'),
-            tag: z.string().optional().describe('New tag'),
+            tags: z
+                .array(z.string())
+                .optional()
+                .describe('New tags (replaces the whole set). Panel accepts A-Z, 0-9, _ and : only'),
             serverDescription: z
                 .string()
                 .optional()
@@ -271,10 +271,6 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
                 .boolean()
                 .optional()
                 .describe('Keep SNI field blank'),
-            allowInsecure: z
-                .boolean()
-                .optional()
-                .describe('Allow insecure connections'),
             vlessRouteId: z
                 .number()
                 .optional()
@@ -291,13 +287,34 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
         async (params) => {
             try {
                 const { uuid, configProfileUuid, configProfileInboundUuid, ...fields } = params;
-                const body: Record<string, unknown> = { uuid, ...fields };
+
+                // Панель трактует ключи, отсутствующие в PATCH, как сброс в дефолт:
+                // обновление одного remark снимало у хостов isDisabled, и выключенные
+                // хосты уезжали в подписку. Поэтому тело собирается поверх текущего
+                // состояния хоста, а не из одних переданных полей.
+                const current = (await client.getHostByUuid(uuid)) as {
+                    response?: Record<string, unknown>;
+                };
+                const host = current?.response;
+                if (!host) {
+                    throw new Error(`Host ${uuid} not found, refusing to update blindly`);
+                }
+
+                // viewPosition возвращается панелью, но телом update не принимается.
+                const { viewPosition: _viewPosition, ...merged } = host;
+                const body: Record<string, unknown> = { ...merged, uuid };
+                for (const [key, value] of Object.entries(fields)) {
+                    if (value !== undefined) body[key] = value;
+                }
                 if (configProfileUuid !== undefined || configProfileInboundUuid !== undefined) {
+                    const inbound = (host.inbound ?? {}) as Record<string, unknown>;
                     body.inbound = {
-                        ...(configProfileUuid !== undefined ? { configProfileUuid } : {}),
-                        ...(configProfileInboundUuid !== undefined ? { configProfileInboundUuid } : {}),
+                        configProfileUuid: configProfileUuid ?? inbound.configProfileUuid,
+                        configProfileInboundUuid:
+                            configProfileInboundUuid ?? inbound.configProfileInboundUuid,
                     };
                 }
+
                 const result = await client.updateHost(body);
                 return toolResult(result);
             } catch (e) {

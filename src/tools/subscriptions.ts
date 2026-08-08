@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { RemnawaveClient } from '../client/index.js';
-import { toolResult, toolError } from './helpers.js';
+import { toolResult, toolError, listQueryParams } from './helpers.js';
 
 export function registerSubscriptionTools(
     server: McpServer,
@@ -120,10 +120,10 @@ export function registerSubscriptionTools(
 
     server.tool(
         'subscription_request_history_list',
-        'List subscription request history',
-        {},
-        async () => {
-            try { return toolResult(await client.getSubscriptionRequestHistory()); } catch (e) { return toolError(e); }
+        'List subscription request history (paginated; filter by userId to see one user)',
+        listQueryParams,
+        async (params) => {
+            try { return toolResult(await client.getSubscriptionRequestHistory(params)); } catch (e) { return toolError(e); }
         },
     );
 

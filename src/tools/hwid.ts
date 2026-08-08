@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { RemnawaveClient } from '../client/index.js';
-import { toolResult, toolError } from './helpers.js';
+import { toolResult, toolError, listQueryParams } from './helpers.js';
 
 export function registerHwidTools(
     server: McpServer,
@@ -26,11 +26,11 @@ export function registerHwidTools(
 
     server.tool(
         'hwid_devices_list_all',
-        'List all HWID devices across all users',
-        {},
-        async () => {
+        'List all HWID devices across all users (paginated: pass size to get more than the default 25)',
+        listQueryParams,
+        async (params) => {
             try {
-                const result = await client.getAllHwidDevices();
+                const result = await client.getAllHwidDevices(params);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
