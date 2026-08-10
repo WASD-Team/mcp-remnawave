@@ -266,5 +266,33 @@ check('переданные заголовки доходят до панели'
     JSON.stringify(requests[0]?.body) === '{"requestHeaders":{"user-agent":"FlClash X/v0.4.2"}}',
     JSON.stringify(requests[0]?.body));
 
+// --- 9. детали ошибки валидации не должны терятьcя ---------------------------
+// Панель присылает разбор в `errors`, а клиент брал только `message` — и «Validation failed»
+// приходилось расшифровывать локальным safeParse. Ответ ниже — реальный, снят с панели.
+console.log('\n9. детали ошибки валидации');
+const realFetch = globalThis.fetch;
+globalThis.fetch = (async () =>
+    new Response(
+        JSON.stringify({
+            statusCode: 400,
+            message: 'Validation failed',
+            errors: [
+                {
+                    expected: 'boolean',
+                    code: 'invalid_type',
+                    path: ['forceRestart'],
+                    message: 'Invalid input: expected boolean, received undefined',
+                },
+            ],
+        }),
+        { status: 400, headers: { 'content-type': 'application/json' } },
+    )) as any;
+
+const failedRestart = await handlers.get('nodes_restart')!({ uuid: 'node-1', forceRestart: true });
+const errorText = String(failedRestart?.content?.[0]?.text ?? '');
+check('в тексте ошибки видно поле', errorText.includes('forceRestart'), errorText.slice(0, 120));
+check('и ожидаемый тип', errorText.includes('boolean'));
+globalThis.fetch = realFetch;
+
 console.log(failed === 0 ? '\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : `\nПРОВАЛОВ: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);

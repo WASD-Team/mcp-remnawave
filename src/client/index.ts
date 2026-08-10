@@ -39,10 +39,26 @@ export class RemnawaveClient {
         if (!res.ok) {
             let errorMessage: string;
             try {
-                const errorBody = await res.json();
-                errorMessage =
-                    (errorBody as { message?: string }).message ||
-                    JSON.stringify(errorBody);
+                const errorBody = (await res.json()) as {
+                    message?: string;
+                    errors?: { path?: unknown[]; message?: string; expected?: string }[];
+                };
+                errorMessage = errorBody.message || JSON.stringify(errorBody);
+                // ⚠️ Панель ПРИСЫЛАЕТ разбор ошибок валидации в `errors` (поле, ожидаемый тип),
+                // а мы раньше брали только `message` — и получали безликое «Validation failed»,
+                // из-за которого приходилось воспроизводить проверку локальным safeParse.
+                // Детали были в ответе всё это время. Проверено на живой панели 10.08.2026:
+                // restart без тела → errors: [{ path: ['forceRestart'], expected: 'boolean' }].
+                if (Array.isArray(errorBody.errors) && errorBody.errors.length > 0) {
+                    const details = errorBody.errors
+                        .map((issue) => {
+                            const field = Array.isArray(issue.path) ? issue.path.join('.') : '';
+                            const expected = issue.expected ? ` (expected ${issue.expected})` : '';
+                            return `${field || '?'}${expected}: ${issue.message ?? ''}`.trim();
+                        })
+                        .join('; ');
+                    errorMessage = `${errorMessage} — ${details}`;
+                }
             } catch {
                 errorMessage = `HTTP ${res.status} ${res.statusText}`;
             }
