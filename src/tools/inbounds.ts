@@ -109,6 +109,14 @@ export function registerInboundTools(
         {
             uuid: z.string().describe('Profile UUID'),
             name: z.string().optional().describe('New name'),
+            // ⚠️ Тело xray-конфига целиком. Панель принимает его как есть и рестартует xray
+            // НА ВСЕХ нодах профиля разом. Для боевого профиля пользоваться
+            // projects/RWXRAY/nodes/deploy-config.py: он делает бэкап, сверку и проверку
+            // фактического egress после заливки.
+            config: z
+                .record(z.string(), z.unknown())
+                .optional()
+                .describe('Full xray config object — replaces the profile config, restarts nodes'),
         },
         async (params) => {
             try {

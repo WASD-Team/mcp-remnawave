@@ -10,8 +10,16 @@ export function registerApiTokenTools(server: McpServer, client: RemnawaveClient
 
     if (readonly) return;
 
+    // ⚠️ Поля названы ровно как в контракте (`CreateApiTokenCommand`). Раньше тул принимал
+    // `tokenName` и не имел `expiresInDays`, обязательного по контракту, — панель отвечала на
+    // такой вызов `Validation failed` без указания поля, то есть тул не работал вообще (SAD-179).
     server.tool('api_tokens_create', 'Create a new API token', {
-        tokenName: z.string().describe('Token name'),
+        name: z.string().describe('Token name, 2-30 chars'),
+        expiresInDays: z.number().describe('Lifetime in days, minimum 1 (required by contract)'),
+        scopes: z
+            .array(z.string())
+            .optional()
+            .describe('Permission scopes, defaults to ["*"] — full access'),
     }, async (params) => {
         try { return toolResult(await client.createApiToken(params)); } catch (e) { return toolError(e); }
     });

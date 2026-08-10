@@ -664,8 +664,12 @@ export class RemnawaveClient {
         return this.patch(REST_API.SNIPPETS.UPDATE, params);
     }
 
+    // ⚠️ Именно DELETE с телом, а не POST: у сниппетов все четыре команды висят на одном пути
+    // `/api/snippets/` и различаются только методом (`DeleteSnippetCommand` — delete). POST здесь
+    // попадал в обработчик создания. Найдено 10.08.2026 отчётом `check:bodies` (SAD-179): тул
+    // получил поля чужой команды, и это вскрыло подмену метода.
     async deleteSnippet(params: Record<string, unknown>) {
-        return this.post(REST_API.SNIPPETS.DELETE, params);
+        return this.delete(REST_API.SNIPPETS.DELETE, params);
     }
 
     // External Squads

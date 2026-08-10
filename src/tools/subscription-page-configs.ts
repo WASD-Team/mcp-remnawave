@@ -25,6 +25,13 @@ export function registerSubPageConfigTools(server: McpServer, client: RemnawaveC
     server.tool('sub_page_configs_update', 'Update a subscription page configuration', {
         uuid: z.string().describe('Config UUID'),
         name: z.string().optional().describe('New name'),
+        // Контракт объявляет config как unknown — панель хранит его без разбора структуры,
+        // поэтому здесь тоже без схемы. ⚠️ Заменяет конфиг страницы целиком: перед правкой
+        // снять текущий через sub_page_configs_get, иначе потеряется всё непереданное.
+        config: z
+            .unknown()
+            .optional()
+            .describe('Full subscription page config — replaces the stored one entirely'),
     }, async (params) => {
         try { return toolResult(await client.updateSubscriptionPageConfig(params)); } catch (e) { return toolError(e); }
     });

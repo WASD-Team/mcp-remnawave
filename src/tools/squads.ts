@@ -63,6 +63,13 @@ export function registerSquadTools(
         {
             uuid: z.string().describe('Squad UUID'),
             name: z.string().optional().describe('New squad name'),
+            // ⚠️ ЗАМЕНА, НЕ ДОБАВЛЕНИЕ: переданный список полностью вытесняет прежний.
+            // Пустой массив оставит сквад без инбаундов — его пользователи молча перестанут
+            // получать узлы в подписке. Сперва squads_list, потом полный новый список.
+            inbounds: z
+                .array(z.string())
+                .optional()
+                .describe('Inbound UUIDs for this squad — REPLACES the current list entirely'),
         },
         async (params) => {
             try {

@@ -151,6 +151,45 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
                 .number()
                 .optional()
                 .describe('New consumption multiplier'),
+            nodeConsumptionMultiplier: z
+                .number()
+                .optional()
+                .describe('Per-node consumption multiplier (0-100, one decimal)'),
+            // Ради этого поля и заведена SAD-179: без него ноду нельзя перевести на другой
+            // конфиг-профиль, то есть канареечный деплой приходилось делать прямым вызовом API.
+            // ⚠️ Панель требует ОБА подполя вместе: только uuid профиля без списка инбаундов
+            // не пройдёт валидацию.
+            configProfile: z
+                .object({
+                    activeConfigProfileUuid: z
+                        .string()
+                        .describe('Config profile UUID to activate on this node'),
+                    activeInbounds: z
+                        .array(z.string())
+                        .describe('Inbound UUIDs from that profile to enable'),
+                })
+                .optional()
+                .describe('Switch the node to another config profile (both fields required)'),
+            proxyUrl: z
+                .string()
+                .nullish()
+                .describe('Outbound SOCKS5 proxy: socks5://[user:pass@]host:port, null to clear'),
+            providerUuid: z
+                .string()
+                .nullish()
+                .describe('Infra billing provider UUID, null to detach'),
+            activePluginUuid: z
+                .string()
+                .nullish()
+                .describe('Node plugin UUID to activate, null to detach'),
+            tags: z
+                .array(z.string())
+                .optional()
+                .describe('Node tags: UPPERCASE, digits, _ and : only, up to 10 tags'),
+            note: z
+                .string()
+                .nullish()
+                .describe('Free-form note, up to 255 chars, null to clear'),
         },
         async (params) => {
             try {
