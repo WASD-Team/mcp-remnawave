@@ -14,6 +14,8 @@ import { registerNodePluginTools } from '../src/tools/node-plugins.js';
 import { registerSettingsTools } from '../src/tools/settings.js';
 import { registerSquadTools } from '../src/tools/squads.js';
 import { registerExternalSquadTools } from '../src/tools/external-squads.js';
+import { registerNodeTools } from '../src/tools/nodes.js';
+import { registerSubscriptionTools } from '../src/tools/subscriptions.js';
 
 type Handler = (args: any) => Promise<any>;
 const handlers = new Map<string, Handler>();
@@ -47,6 +49,8 @@ registerNodePluginTools(fakeServer, client, false);
 registerSettingsTools(fakeServer, client, false);
 registerSquadTools(fakeServer, client, false);
 registerExternalSquadTools(fakeServer, client, false);
+registerNodeTools(fakeServer, client, false);
+registerSubscriptionTools(fakeServer, client);
 
 let failed = 0;
 function check(name: string, condition: boolean, detail = '') {
@@ -221,6 +225,46 @@ check('удаление не падает на разборе ответа', del
     JSON.stringify(deleted?.content?.[0]?.text ?? '').slice(0, 80));
 check('запрос всё-таки ушёл', requests[0]?.method === 'DELETE');
 nextResponse = {};
+
+// --- 8. обязательное тело запроса (SAD-176) ---------------------------------
+// Класс ошибки: панель отвечает безликим «Validation failed», тул выглядит сломанным
+// целиком, а не хватает одного поля. Автоматическая сверка всех вызовов с контрактом —
+// npm run check:bodies; здесь фиксируется ровно то, что уходит в сеть.
+console.log('\n8. обязательное тело запроса');
+requests.length = 0;
+await handlers.get('nodes_restart')!({ uuid: 'node-1', forceRestart: true });
+check('restart идёт POST на actions/restart',
+    requests[0]?.method === 'POST' && requests[0]?.url.endsWith('/nodes/node-1/actions/restart'),
+    `${requests[0]?.method} ${requests[0]?.url}`);
+check('forceRestart уходит в теле', JSON.stringify(requests[0]?.body) === '{"forceRestart":true}',
+    JSON.stringify(requests[0]?.body));
+
+requests.length = 0;
+await handlers.get('nodes_restart')!({ uuid: 'node-1', forceRestart: false });
+check('forceRestart:false не теряется и не подменяется',
+    JSON.stringify(requests[0]?.body) === '{"forceRestart":false}', JSON.stringify(requests[0]?.body));
+
+requests.length = 0;
+await handlers.get('nodes_restart_all')!({ forceRestart: false });
+check('restart_all тоже посылает тело',
+    JSON.stringify(requests[0]?.body) === '{"forceRestart":false}', JSON.stringify(requests[0]?.body));
+
+// GET с телом — так объявлено в контракте и так реализовано в панели: заголовки идут
+// в матчер правил SRR. Без тела приходило «Validation failed».
+requests.length = 0;
+await handlers.get('subscriptions_get_subpage_config')!({ shortUuid: 'short-1' });
+check('subpage-config: GET с телом даже без заголовков',
+    requests[0]?.method === 'GET' && JSON.stringify(requests[0]?.body) === '{"requestHeaders":{}}',
+    `${requests[0]?.method} ${JSON.stringify(requests[0]?.body)}`);
+
+requests.length = 0;
+await handlers.get('subscriptions_get_subpage_config')!({
+    shortUuid: 'short-1',
+    requestHeaders: { 'user-agent': 'FlClash X/v0.4.2' },
+});
+check('переданные заголовки доходят до панели',
+    JSON.stringify(requests[0]?.body) === '{"requestHeaders":{"user-agent":"FlClash X/v0.4.2"}}',
+    JSON.stringify(requests[0]?.body));
 
 console.log(failed === 0 ? '\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : `\nПРОВАЛОВ: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);

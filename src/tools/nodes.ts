@@ -215,13 +215,20 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
 
     server.tool(
         'nodes_restart',
-        'Restart a specific node',
+        'Restart a specific node. Causes ~12s of downtime on :443 for that node when forceRestart is true',
         {
             uuid: z.string().describe('Node UUID'),
+            forceRestart: z
+                .boolean()
+                .describe(
+                    'Required by the panel. true — restart the core unconditionally. ' +
+                        'false — the node compares config hashes first and does NOT restart at all ' +
+                        'if the config is unchanged and xray is healthy, so a "restart" may be a no-op.',
+                ),
         },
-        async ({ uuid }) => {
+        async ({ uuid, forceRestart }) => {
             try {
-                const result = await client.restartNode(uuid);
+                const result = await client.restartNode(uuid, forceRestart);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -231,11 +238,18 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
 
     server.tool(
         'nodes_restart_all',
-        'Restart all nodes',
-        {},
-        async () => {
+        'DANGER: restarts EVERY node in the panel at once. With forceRestart=true this takes the whole fleet down for ~12s simultaneously — prefer restarting nodes one by one with nodes_restart',
+        {
+            forceRestart: z
+                .boolean()
+                .describe(
+                    'Required by the panel. true — restart every core unconditionally (full fleet downtime). ' +
+                        'false — each node restarts only if its config hash changed.',
+                ),
+        },
+        async ({ forceRestart }) => {
             try {
-                const result = await client.restartAllNodes();
+                const result = await client.restartAllNodes(forceRestart);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);

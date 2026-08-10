@@ -55,8 +55,10 @@ export class RemnawaveClient {
         return (text ? JSON.parse(text) : null) as T;
     }
 
-    private async get<T = unknown>(path: string): Promise<T> {
-        return this.request<T>('GET', path);
+    // body у GET — не блажь: контракт панели требует тело у GET subpage-config
+    // (заголовки для матчинга правил SRR). Остальные GET'ы вызывают без него.
+    private async get<T = unknown>(path: string, body?: unknown): Promise<T> {
+        return this.request<T>('GET', path, body);
     }
 
     /**
@@ -252,12 +254,16 @@ export class RemnawaveClient {
         return this.post(REST_API.NODES.ACTIONS.DISABLE(uuid));
     }
 
-    async restartNode(uuid: string) {
-        return this.post(REST_API.NODES.ACTIONS.RESTART(uuid));
+    // forceRestart обязателен по контракту (RestartNodeCommand.RequestBodySchema) — без тела
+    // панель отвечает «Validation failed» без указания поля. Смысл флага (проверено по коду
+    // remnawave/node, xray.service.ts): false — нода сверит хеши конфига и, если он не менялся
+    // и xray жив, НЕ перезапустится вовсе; true — пропускает проверку и рестартует безусловно.
+    async restartNode(uuid: string, forceRestart: boolean) {
+        return this.post(REST_API.NODES.ACTIONS.RESTART(uuid), { forceRestart });
     }
 
-    async restartAllNodes() {
-        return this.post(REST_API.NODES.ACTIONS.RESTART_ALL);
+    async restartAllNodes(forceRestart: boolean) {
+        return this.post(REST_API.NODES.ACTIONS.RESTART_ALL, { forceRestart });
     }
 
     async resetNodeTraffic(uuid: string) {
@@ -390,8 +396,13 @@ export class RemnawaveClient {
         return this.get(REST_API.SUBSCRIPTIONS.GET_BY.SHORT_UUID_RAW(shortUuid));
     }
 
-    async getSubscriptionSubpageConfig(shortUuid: string) {
-        return this.get(REST_API.SUBSCRIPTIONS.SUBPAGE.GET_CONFIG(shortUuid));
+    // GET с обязательным телом — необычно, но так объявлено в контракте
+    // (GetSubpageConfigByShortUuidCommand) и так же реализовано в панели: контроллер берёт
+    // body.requestHeaders и прогоняет их через матчер правил SRR. То есть ответ зависит от
+    // заголовков: это «какой subpage-конфиг получит клиент, представившийся вот так».
+    // Без тела панель отвечала безликим «Validation failed».
+    async getSubscriptionSubpageConfig(shortUuid: string, requestHeaders: Record<string, string>) {
+        return this.get(REST_API.SUBSCRIPTIONS.SUBPAGE.GET_CONFIG(shortUuid), { requestHeaders });
     }
 
     async getConnectionKeysByUserId(userId: string) {

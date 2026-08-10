@@ -102,10 +102,21 @@ export function registerSubscriptionTools(
 
     server.tool(
         'subscriptions_get_subpage_config',
-        'Get subscription page configuration',
-        { shortUuid: z.string().describe('Short UUID') },
-        async ({ shortUuid }) => {
-            try { return toolResult(await client.getSubscriptionSubpageConfig(shortUuid)); } catch (e) { return toolError(e); }
+        'Get subscription page configuration as it would be served to a client presenting the given headers (the panel runs them through the subscription-response-rules matcher)',
+        {
+            shortUuid: z.string().describe('Short UUID'),
+            requestHeaders: z
+                .record(z.string(), z.string())
+                .optional()
+                .describe(
+                    'Headers to match subscription response rules against, e.g. ' +
+                        '{"user-agent": "FlClash X/v0.4.2 core/v1.19.28 Platform/macos"}. ' +
+                        'The panel requires this field to be present; omit it to see what an ' +
+                        'unidentified client gets.',
+                ),
+        },
+        async ({ shortUuid, requestHeaders }) => {
+            try { return toolResult(await client.getSubscriptionSubpageConfig(shortUuid, requestHeaders ?? {})); } catch (e) { return toolError(e); }
         },
     );
 
