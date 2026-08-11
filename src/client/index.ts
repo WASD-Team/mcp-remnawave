@@ -116,10 +116,10 @@ export class RemnawaveClient {
 
     // Users
 
-    async getUsers(start = 0, size = 25) {
-        return this.get(
-            `${REST_API.USERS.GET}?start=${start}&size=${size}`,
-        );
+    // filters/sorting панель принимает JSON-строкой в query — это единственный способ
+    // искать людей по полю (например `status`) без выгрузки всего парка страницами.
+    async getUsers(params: Record<string, unknown> = {}) {
+        return this.get(`${REST_API.USERS.GET}${this.buildQuery(params)}`);
     }
 
     async getUserById(userId: string) {
@@ -132,6 +132,12 @@ export class RemnawaveClient {
 
     async getUserSubscriptionRequestHistory(userId: string) {
         return this.get(REST_API.USERS.SUBSCRIPTION_REQUEST_HISTORY(userId));
+    }
+
+    // Какие ноды реально доступны человеку, с разбивкой по сквадам и инбаундам.
+    // Закрывает вопрос «почему у него нет этой локации» без ручного обхода сквадов.
+    async getUserAccessibleNodes(userId: string) {
+        return this.get(REST_API.USERS.ACCESSIBLE_NODES(userId));
     }
 
     async getUserByShortUuid(shortUuid: string) {
@@ -352,20 +358,31 @@ export class RemnawaveClient {
 
     // System
 
-    async getStats() {
-        return this.get(REST_API.SYSTEM.STATS.SYSTEM_STATS);
+    // `tz` определяет, по какой зоне нарезаны сутки в ответе; без него — по UTC.
+    async getStats(params: Record<string, unknown> = {}) {
+        return this.get(
+            `${REST_API.SYSTEM.STATS.SYSTEM_STATS}${this.buildQuery(params)}`,
+        );
     }
 
-    async getBandwidthStats() {
-        return this.get(REST_API.SYSTEM.STATS.BANDWIDTH_STATS);
+    async getBandwidthStats(params: Record<string, unknown> = {}) {
+        return this.get(
+            `${REST_API.SYSTEM.STATS.BANDWIDTH_STATS}${this.buildQuery(params)}`,
+        );
+    }
+
+    async getHttpStats() {
+        return this.get(REST_API.SYSTEM.STATS.HTTP);
     }
 
     async getNodesMetrics() {
         return this.get(REST_API.SYSTEM.STATS.NODES_METRICS);
     }
 
-    async getNodesStatistics() {
-        return this.get(REST_API.SYSTEM.STATS.NODES_STATS);
+    async getNodesStatistics(params: Record<string, unknown> = {}) {
+        return this.get(
+            `${REST_API.SYSTEM.STATS.NODES_STATS}${this.buildQuery(params)}`,
+        );
     }
 
     async getStatsRecap() {
@@ -408,8 +425,13 @@ export class RemnawaveClient {
         return this.get(REST_API.SUBSCRIPTIONS.GET_BY.SHORT_UUID(shortUuid));
     }
 
-    async getSubscriptionByShortUuidRaw(shortUuid: string) {
-        return this.get(REST_API.SUBSCRIPTIONS.GET_BY.SHORT_UUID_RAW(shortUuid));
+    async getSubscriptionByShortUuidRaw(
+        shortUuid: string,
+        params: Record<string, unknown> = {},
+    ) {
+        return this.get(
+            `${REST_API.SUBSCRIPTIONS.GET_BY.SHORT_UUID_RAW(shortUuid)}${this.buildQuery(params)}`,
+        );
     }
 
     // GET с обязательным телом — необычно, но так объявлено в контракте
@@ -541,8 +563,13 @@ export class RemnawaveClient {
         return this.get(REST_API.HWID.STATS);
     }
 
-    async getHwidTopUsers() {
-        return this.get(REST_API.HWID.TOP_USERS_BY_DEVICES);
+    // ⚠️ Без query панель отдаёт ровно 5 записей (`size` по умолчанию), и ответ выглядит
+    // полным: `users[] = 5` при `total = 50`. Из-за этого мы принимали решения по HWID-лимиту
+    // по верхушке списка (SAD-205). `size` в контракте ограничен сотней.
+    async getHwidTopUsers(params: Record<string, unknown> = {}) {
+        return this.get(
+            `${REST_API.HWID.TOP_USERS_BY_DEVICES}${this.buildQuery(params)}`,
+        );
     }
 
     async createUserHwidDevice(params: Record<string, unknown>) {
@@ -565,13 +592,54 @@ export class RemnawaveClient {
     }
 
     // Bandwidth Stats
+    //
+    // ⚠️ У всех четырёх `start` и `end` (YYYY-MM-DD) ОБЯЗАТЕЛЬНЫ — без них панель отвечает 400.
+    // До 11.08.2026 два метода ниже звали эти пути без query вовсе, то есть были нерабочими, и
+    // заметить это было нечем: тулов под них не существовало, компилятор молчал (SAD-205).
+    //
+    // Не покрыты осознанно: POST-двойники `nodes/usage` и `nodes/users` — они делают то же
+    // самое, но с фильтром по списку `nodesUuids`; выборку по одной ноде закрывает
+    // `getNodeUsersBandwidth`. ⛔ `nodes/realtime` НЕ добавлять: путь объявлен в контракте
+    // 3.0.0–3.3.0, но панель 3.2.1 отдаёт на него 404 (проверено живым запросом 11.08.2026).
 
-    async getNodesBandwidth() {
-        return this.get(REST_API.BANDWIDTH_STATS.NODES.GET);
+    async getNodesBandwidth(params: Record<string, unknown>) {
+        return this.get(
+            `${REST_API.BANDWIDTH_STATS.NODES.GET}${this.buildQuery(params)}`,
+        );
     }
 
-    async getUserBandwidthByUserId(userId: string) {
-        return this.get(REST_API.BANDWIDTH_STATS.USERS.GET_BY_ID(userId));
+    async getNodeUsersBandwidth(uuid: string, params: Record<string, unknown>) {
+        return this.get(
+            `${REST_API.BANDWIDTH_STATS.NODES.GET_USERS(uuid)}${this.buildQuery(params)}`,
+        );
+    }
+
+    async getUserBandwidthByUserId(
+        userId: string,
+        params: Record<string, unknown>,
+    ) {
+        return this.get(
+            `${REST_API.BANDWIDTH_STATS.USERS.GET_BY_ID(userId)}${this.buildQuery(params)}`,
+        );
+    }
+
+    async getInternalSquadBandwidth(
+        uuid: string,
+        params: Record<string, unknown>,
+    ) {
+        return this.get(
+            `${REST_API.BANDWIDTH_STATS.INTERNAL_SQUADS.GET_USAGE(uuid)}${this.buildQuery(params)}`,
+        );
+    }
+
+    async getInternalSquadUserBandwidth(
+        squadUuid: string,
+        userId: string,
+        params: Record<string, unknown>,
+    ) {
+        return this.get(
+            `${REST_API.BANDWIDTH_STATS.INTERNAL_SQUADS.USER_USAGE(squadUuid, userId)}${this.buildQuery(params)}`,
+        );
     }
 
     // Auth
@@ -638,8 +706,10 @@ export class RemnawaveClient {
         return this.delete(REST_API.INFRA_BILLING.DELETE_BILLING_NODE(uuid));
     }
 
-    async getBillingHistory() {
-        return this.get(REST_API.INFRA_BILLING.GET_BILLING_HISTORY);
+    async getBillingHistory(params: Record<string, unknown> = {}) {
+        return this.get(
+            `${REST_API.INFRA_BILLING.GET_BILLING_HISTORY}${this.buildQuery(params)}`,
+        );
     }
 
     async createBillingHistory(params: Record<string, unknown>) {
@@ -792,8 +862,12 @@ export class RemnawaveClient {
         return this.post(REST_API.NODE_PLUGINS.EXECUTOR, params);
     }
 
-    async getTorrentBlockerReports() {
-        return this.get(REST_API.NODE_PLUGINS.TORRENT_BLOCKER.GET_REPORTS);
+    // ⚠️ Без пагинации отдаёт первые 25 отчётов и выглядит полным ответом — а по этим
+    // отчётам мы судили о торрентах на нодах (тот же класс, что `hwid_top_users`, SAD-205).
+    async getTorrentBlockerReports(params: Record<string, unknown> = {}) {
+        return this.get(
+            `${REST_API.NODE_PLUGINS.TORRENT_BLOCKER.GET_REPORTS}${this.buildQuery(params)}`,
+        );
     }
 
     async getTorrentBlockerStats() {

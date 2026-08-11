@@ -19,6 +19,7 @@ import { registerSubscriptionTemplateTools } from './subscription-templates.js';
 import { registerNodePluginTools } from './node-plugins.js';
 import { registerIpControlTools } from './ip-control.js';
 import { registerMetadataTools } from './metadata.js';
+import { registerBandwidthStatsTools } from './bandwidth-stats.js';
 
 export function registerAllTools(server: McpServer, client: RemnawaveClient, readonly: boolean) {
     registerUserTools(server, client, readonly);
@@ -40,4 +41,5 @@ export function registerAllTools(server: McpServer, client: RemnawaveClient, rea
     registerNodePluginTools(server, client, readonly);
     registerIpControlTools(server, client, readonly);
     registerMetadataTools(server, client, readonly);
+    registerBandwidthStatsTools(server, client);
 }

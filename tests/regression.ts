@@ -16,6 +16,10 @@ import { registerSquadTools } from '../src/tools/squads.js';
 import { registerExternalSquadTools } from '../src/tools/external-squads.js';
 import { registerNodeTools } from '../src/tools/nodes.js';
 import { registerSubscriptionTools } from '../src/tools/subscriptions.js';
+import { registerHwidTools } from '../src/tools/hwid.js';
+import { registerSystemTools } from '../src/tools/system.js';
+import { registerUserTools } from '../src/tools/users.js';
+import { registerBandwidthStatsTools } from '../src/tools/bandwidth-stats.js';
 
 type Handler = (args: any) => Promise<any>;
 const handlers = new Map<string, Handler>();
@@ -51,6 +55,10 @@ registerSquadTools(fakeServer, client, false);
 registerExternalSquadTools(fakeServer, client, false);
 registerNodeTools(fakeServer, client, false);
 registerSubscriptionTools(fakeServer, client);
+registerHwidTools(fakeServer, client, false);
+registerSystemTools(fakeServer, client);
+registerUserTools(fakeServer, client, false);
+registerBandwidthStatsTools(fakeServer, client);
 
 let failed = 0;
 function check(name: string, condition: boolean, detail = '') {
@@ -293,6 +301,62 @@ const errorText = String(failedRestart?.content?.[0]?.text ?? '');
 check('в тексте ошибки видно поле', errorText.includes('forceRestart'), errorText.slice(0, 120));
 check('и ожидаемый тип', errorText.includes('boolean'));
 globalThis.fetch = realFetch;
+
+// --- 10. параметры запроса доходят до панели (SAD-205) -----------------------
+// Класс: тул зарегистрирован с пустой схемой, панель молча применяет дефолты, и ответ
+// выглядит полным. `hwid_top_users` отдавал 5 записей при total = 50, и по этой верхушке
+// принимались решения о HWID-лимите. Сплошную сверку с контрактом делает
+// `npm run check:contract`; здесь фиксируется, что параметры реально уходят в query.
+console.log('\n10. query-параметры листингов и статистики');
+requests.length = 0;
+nextResponse = { response: { users: [], total: 0 } };
+await handlers.get('hwid_top_users')!({ size: 100 });
+check('hwid_top_users шлёт size в query', decodeURIComponent(requests[0]?.url ?? '').includes('size=100'),
+    requests[0]?.url);
+
+requests.length = 0;
+await handlers.get('hwid_top_users')!({});
+check('без параметров query пустой (дефолты панели)', !requests[0]?.url.includes('?'), requests[0]?.url);
+
+requests.length = 0;
+nextResponse = { response: {} };
+await handlers.get('system_bandwidth_stats')!({ tz: 'Europe/Moscow' });
+check('system_bandwidth_stats шлёт tz', decodeURIComponent(requests[0]?.url ?? '').includes('tz=Europe/Moscow'),
+    requests[0]?.url);
+
+requests.length = 0;
+nextResponse = { response: { routes: [], total: 0 } };
+await handlers.get('system_stats_http')!({});
+check('system_stats_http идёт на /system/stats/http',
+    requests[0]?.url.endsWith('/api/system/stats/http'), requests[0]?.url);
+
+// Обязательные start/end: без них панель отвечает 400, поэтому в схеме они не optional.
+requests.length = 0;
+nextResponse = { response: {} };
+await handlers.get('bandwidth_nodes_usage')!({ start: '2026-08-01', end: '2026-08-11' });
+const bwUrl = decodeURIComponent(requests[0]?.url ?? '');
+check('bandwidth_nodes_usage шлёт период', bwUrl.includes('start=2026-08-01') && bwUrl.includes('end=2026-08-11'), bwUrl);
+
+requests.length = 0;
+await handlers.get('bandwidth_squad_user_usage')!({
+    squadUuid: 'squad-1', userId: '118', start: '2026-08-01', end: '2026-08-11',
+});
+check('bandwidth_squad_user_usage: оба пути-параметра на месте',
+    requests[0]?.url.includes('/internal-squads/squad-1/users/118/usage'), requests[0]?.url);
+
+requests.length = 0;
+nextResponse = { response: { userId: 118, activeNodes: [] } };
+await handlers.get('users_accessible_nodes')!({ userId: '118' });
+check('users_accessible_nodes идёт на accessible-nodes',
+    requests[0]?.url.endsWith('/api/users/118/accessible-nodes'), requests[0]?.url);
+
+requests.length = 0;
+nextResponse = { response: { total: 0, users: [] } };
+await handlers.get('users_list')!({ filters: [{ id: 'status', value: 'ACTIVE' }], filterModes: { status: 'equals' } });
+const usersUrl = decodeURIComponent(requests[0]?.url ?? '');
+check('users_list шлёт фильтры и режим сопоставления',
+    usersUrl.includes('filters=[{"id":"status","value":"ACTIVE"}]') && usersUrl.includes('filterModes={"status":"equals"}'),
+    usersUrl);
 
 console.log(failed === 0 ? '\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : `\nПРОВАЛОВ: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);

@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { RemnawaveClient } from '../client/index.js';
-import { toolResult, toolError } from './helpers.js';
+import { toolResult, toolError, listQueryParams } from './helpers.js';
 
 export function registerNodePluginTools(server: McpServer, client: RemnawaveClient, readonly: boolean) {
     server.tool('node_plugins_list', 'List all node plugins', {}, async () => {
@@ -14,8 +14,10 @@ export function registerNodePluginTools(server: McpServer, client: RemnawaveClie
         try { return toolResult(await client.getNodePlugin(uuid)); } catch (e) { return toolError(e); }
     });
 
-    server.tool('node_plugins_torrent_reports', 'Get torrent blocker reports', {}, async () => {
-        try { return toolResult(await client.getTorrentBlockerReports()); } catch (e) { return toolError(e); }
+    // ⚠️ Пагинация обязательна к передаче осознанно: без неё панель отдаёт первые 25 отчётов,
+    // и «торрентов почти нет» может означать «мы смотрим верхушку списка» (SAD-205).
+    server.tool('node_plugins_torrent_reports', 'Get torrent blocker reports (paginated: pass size to get more than the default 25)', listQueryParams, async (params) => {
+        try { return toolResult(await client.getTorrentBlockerReports(params)); } catch (e) { return toolError(e); }
     });
 
     server.tool('node_plugins_torrent_stats', 'Get torrent blocker statistics', {}, async () => {

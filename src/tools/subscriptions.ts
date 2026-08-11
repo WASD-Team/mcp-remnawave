@@ -94,9 +94,15 @@ export function registerSubscriptionTools(
     server.tool(
         'subscriptions_get_raw_by_short_uuid',
         'Get raw subscription config by short UUID',
-        { shortUuid: z.string().describe('Short UUID') },
-        async ({ shortUuid }) => {
-            try { return toolResult(await client.getSubscriptionByShortUuidRaw(shortUuid)); } catch (e) { return toolError(e); }
+        {
+            shortUuid: z.string().describe('Short UUID'),
+            withDisabledHosts: z
+                .boolean()
+                .optional()
+                .describe('Include hosts that are disabled — useful when a location is missing for the user'),
+        },
+        async ({ shortUuid, ...params }) => {
+            try { return toolResult(await client.getSubscriptionByShortUuidRaw(shortUuid, params)); } catch (e) { return toolError(e); }
         },
     );
 

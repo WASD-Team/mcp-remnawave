@@ -10,10 +10,12 @@ export function registerSystemTools(
     server.tool(
         'system_stats',
         'Get overall Remnawave panel statistics (users, nodes, traffic, memory, CPU)',
-        {},
-        async () => {
+        {
+            tz: z.string().optional().describe('IANA timezone for day boundaries, e.g. Europe/Moscow'),
+        },
+        async (params) => {
             try {
-                const result = await client.getStats();
+                const result = await client.getStats(params);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -23,11 +25,28 @@ export function registerSystemTools(
 
     server.tool(
         'system_bandwidth_stats',
-        'Get bandwidth statistics',
+        'Get bandwidth statistics (last 24h / 7d / 30d buckets)',
+        {
+            // Панель считает границы суток по этой зоне; без неё «за сутки» посчитано по UTC.
+            tz: z.string().optional().describe('IANA timezone, e.g. Europe/Moscow'),
+        },
+        async (params) => {
+            try {
+                const result = await client.getBandwidthStats(params);
+                return toolResult(result);
+            } catch (e) {
+                return toolError(e);
+            }
+        },
+    );
+
+    server.tool(
+        'system_stats_http',
+        'Get HTTP request counts per route and method — what actually hits the panel API',
         {},
         async () => {
             try {
-                const result = await client.getBandwidthStats();
+                const result = await client.getHttpStats();
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -52,10 +71,12 @@ export function registerSystemTools(
     server.tool(
         'system_nodes_statistics',
         'Get node statistics',
-        {},
-        async () => {
+        {
+            tz: z.string().optional().describe('IANA timezone for day boundaries, e.g. Europe/Moscow'),
+        },
+        async (params) => {
             try {
-                const result = await client.getNodesStatistics();
+                const result = await client.getNodesStatistics(params);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);

@@ -1,19 +1,16 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { RemnawaveClient } from '../client/index.js';
-import { toolResult, toolError } from './helpers.js';
+import { toolResult, toolError, listQueryParams } from './helpers.js';
 
 export function registerUserTools(server: McpServer, client: RemnawaveClient, readonly: boolean) {
     server.tool(
         'users_list',
-        'List all Remnawave VPN users with pagination',
-        {
-            start: z.number().default(0).describe('Offset for pagination'),
-            size: z.number().default(25).describe('Number of users to return'),
-        },
-        async ({ start, size }) => {
+        'List all Remnawave VPN users with pagination, field filters and sorting',
+        listQueryParams,
+        async (params) => {
             try {
-                const result = await client.getUsers(start, size);
+                const result = await client.getUsers(params);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);
@@ -62,6 +59,22 @@ export function registerUserTools(server: McpServer, client: RemnawaveClient, re
         async ({ userId }) => {
             try {
                 const result = await client.getUserSubscriptionRequestHistory(userId);
+                return toolResult(result);
+            } catch (e) {
+                return toolError(e);
+            }
+        },
+    );
+
+    server.tool(
+        'users_accessible_nodes',
+        'Which nodes this user can actually reach, broken down by squad and inbound — answers "why is this location missing for him" without walking squads by hand',
+        {
+            userId: z.string().describe('Numeric user ID (API 3.x has no user uuid)'),
+        },
+        async ({ userId }) => {
+            try {
+                const result = await client.getUserAccessibleNodes(userId);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);

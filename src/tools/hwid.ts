@@ -52,13 +52,21 @@ export function registerHwidTools(
         },
     );
 
+    // ⚠️ Схема тут ОБЯЗАТЕЛЬНА, и это не косметика: с пустой схемой панель молча отдавала
+    // первые 5 записей при `total = 50`, а ответ выглядел полным (SAD-205).
     server.tool(
         'hwid_top_users',
-        'Get users with most HWID devices',
-        {},
-        async () => {
+        'Get users with most HWID devices (paginated: pass size, default is only 5)',
+        {
+            start: z.number().optional().describe('Offset, default 0'),
+            size: z
+                .number()
+                .optional()
+                .describe('How many users to return, default 5, max 100'),
+        },
+        async (params) => {
             try {
-                const result = await client.getHwidTopUsers();
+                const result = await client.getHwidTopUsers(params);
                 return toolResult(result);
             } catch (e) {
                 return toolError(e);

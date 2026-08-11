@@ -18,6 +18,16 @@ export const listQueryParams = {
         )
         .optional()
         .describe('Field filters, e.g. [{"id":"userId","value":"118"}]'),
+    // Без режима фильтр применяется так, как решит панель (обычно подстрокой), то есть
+    // «найти ровно это значение» выразить нечем. Контракт принимает карту «поле → режим».
+    filterModes: z
+        .record(z.string(), z.string())
+        .optional()
+        .describe('Match mode per field, e.g. {"username":"equals"}'),
+    globalFilterMode: z
+        .string()
+        .optional()
+        .describe('Match mode applied to all filters at once, e.g. "equals"'),
     sorting: z
         .array(
             z.object({

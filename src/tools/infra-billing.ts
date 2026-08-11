@@ -18,8 +18,11 @@ export function registerInfraBillingTools(server: McpServer, client: RemnawaveCl
         try { return toolResult(await client.getBillingNodes()); } catch (e) { return toolError(e); }
     });
 
-    server.tool('billing_history_list', 'List billing history', {}, async () => {
-        try { return toolResult(await client.getBillingHistory()); } catch (e) { return toolError(e); }
+    server.tool('billing_history_list', 'List billing history (paginated: pass size to get more than the default page)', {
+        start: z.number().optional().describe('Offset, default 0'),
+        size: z.number().optional().describe('Page size'),
+    }, async (params) => {
+        try { return toolResult(await client.getBillingHistory(params)); } catch (e) { return toolError(e); }
     });
 
     if (readonly) return;
