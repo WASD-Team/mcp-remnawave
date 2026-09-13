@@ -20,6 +20,7 @@ import { registerHwidTools } from '../src/tools/hwid.js';
 import { registerSystemTools } from '../src/tools/system.js';
 import { registerUserTools } from '../src/tools/users.js';
 import { registerBandwidthStatsTools } from '../src/tools/bandwidth-stats.js';
+import { withAnnotations } from '../src/tools/annotate.js';
 
 type Handler = (args: any) => Promise<any>;
 const handlers = new Map<string, Handler>();
@@ -357,6 +358,41 @@ const usersUrl = decodeURIComponent(requests[0]?.url ?? '');
 check('users_list шлёт фильтры и режим сопоставления',
     usersUrl.includes('filters=[{"id":"status","value":"ACTIVE"}]') && usersUrl.includes('filterModes={"status":"equals"}'),
     usersUrl);
+
+
+// --- Аннотации и вычистка секретов (SAD-465) --------------------------------
+// Обёртка `withAnnotations` делает две вещи в одном месте: помечает читающие инструменты
+// `readOnlyHint` и вырезает секреты из ответа. Обе проверяются здесь, потому что молчащая
+// обёртка неотличима от работающей: ключи просто снова поедут в расшифровку сессии.
+const annHandlers = new Map<string, Handler>();
+const annMeta = new Map<string, any>();
+const annServer: any = {
+    tool: (name: string, ...rest: any[]) => {
+        const handler = rest.pop();
+        const maybeAnn = rest[rest.length - 1];
+        annMeta.set(name, maybeAnn && typeof maybeAnn === 'object' && 'readOnlyHint' in maybeAnn ? maybeAnn : undefined);
+        annHandlers.set(name, handler);
+    },
+};
+registerNodeTools(withAnnotations(annServer), client, false);
+registerSystemTools(withAnnotations(annServer), client);
+
+check('читающий инструмент помечен readOnlyHint',
+    annMeta.get('nodes_list')?.readOnlyHint === true, JSON.stringify(annMeta.get('nodes_list')));
+check('мутация НЕ помечена readOnlyHint — значит продолжает спрашивать',
+    annMeta.get('nodes_update') === undefined, JSON.stringify(annMeta.get('nodes_update')));
+
+nextResponse = { response: [{ uuid: 'n1', name: 'ru1', privateKey: 'СЕКРЕТ-КЛЮЧ-REALITY' }] };
+const listed = await annHandlers.get('nodes_list')!({});
+check('приватный ключ вычищен из ответа',
+    !JSON.stringify(listed).includes('СЕКРЕТ-КЛЮЧ-REALITY'), String(listed?.content?.[0]?.text).slice(0, 90));
+check('остальные поля ответа не пострадали',
+    JSON.stringify(listed).includes('ru1'));
+
+nextResponse = { response: { privateKey: 'ЭТОТ-КЛЮЧ-НУЖЕН', publicKey: 'pub' } };
+const gen = await annHandlers.get('system_generate_x25519')!({});
+check('генератор ключей НЕ вычищается — иначе он бесполезен',
+    JSON.stringify(gen).includes('ЭТОТ-КЛЮЧ-НУЖЕН'));
 
 console.log(failed === 0 ? '\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : `\nПРОВАЛОВ: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);
