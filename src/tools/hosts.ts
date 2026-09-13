@@ -24,7 +24,7 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
         'hosts_get',
         'Get a specific host by UUID',
         {
-            uuid: z.string().describe('Host UUID'),
+            uuid: z.string().uuid().describe('Host UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -200,7 +200,7 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
         'hosts_update',
         'Update an existing host',
         {
-            uuid: z.string().describe('Host UUID to update'),
+            uuid: z.string().uuid().describe('Host UUID to update'),
             remark: z.string().optional().describe('New remark/name'),
             address: z.string().optional().describe('New address'),
             port: z.number().optional().describe('New port'),
@@ -327,7 +327,7 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
         'hosts_delete',
         'Delete a host from Remnawave',
         {
-            uuid: z.string().describe('Host UUID to delete'),
+            uuid: z.string().uuid().describe('Host UUID to delete'),
         },
         async ({ uuid }) => {
             try {
@@ -345,7 +345,7 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
     server.tool(
         'hosts_bulk_enable',
         'Bulk enable selected hosts',
-        { uuids: z.array(z.string()).describe('Array of host UUIDs') },
+        { uuids: z.array(z.string().uuid()).describe('Array of host UUIDs') },
         async (params) => {
             try { return toolResult(await client.bulkEnableHosts(params)); } catch (e) { return toolError(e); }
         },
@@ -354,7 +354,7 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
     server.tool(
         'hosts_bulk_disable',
         'Bulk disable selected hosts',
-        { uuids: z.array(z.string()).describe('Array of host UUIDs') },
+        { uuids: z.array(z.string().uuid()).describe('Array of host UUIDs') },
         async (params) => {
             try { return toolResult(await client.bulkDisableHosts(params)); } catch (e) { return toolError(e); }
         },
@@ -363,7 +363,7 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
     server.tool(
         'hosts_bulk_delete',
         'Bulk delete selected hosts',
-        { uuids: z.array(z.string()).describe('Array of host UUIDs') },
+        { uuids: z.array(z.string().uuid()).describe('Array of host UUIDs') },
         async (params) => {
             try { return toolResult(await client.bulkDeleteHosts(params)); } catch (e) { return toolError(e); }
         },
@@ -373,9 +373,9 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
         'hosts_bulk_set_inbound',
         'Bulk set inbound for selected hosts',
         {
-            uuids: z.array(z.string()).describe('Array of host UUIDs'),
-            configProfileUuid: z.string().describe('Config profile UUID'),
-            configProfileInboundUuid: z.string().describe('Inbound UUID'),
+            uuids: z.array(z.string().uuid()).describe('Array of host UUIDs'),
+            configProfileUuid: z.string().uuid().describe('Config profile UUID'),
+            configProfileInboundUuid: z.string().uuid().describe('Inbound UUID'),
         },
         async (params) => {
             try { return toolResult(await client.bulkSetHostInbound(params)); } catch (e) { return toolError(e); }
@@ -386,7 +386,7 @@ export function registerHostTools(server: McpServer, client: RemnawaveClient, re
         'hosts_bulk_set_port',
         'Bulk set port for selected hosts',
         {
-            uuids: z.array(z.string()).describe('Array of host UUIDs'),
+            uuids: z.array(z.string().uuid()).describe('Array of host UUIDs'),
             port: z.number().describe('New port number'),
         },
         async (params) => {

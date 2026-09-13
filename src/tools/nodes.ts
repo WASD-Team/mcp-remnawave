@@ -22,7 +22,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_get',
         'Get a specific node by UUID',
         {
-            uuid: z.string().describe('Node UUID'),
+            uuid: z.string().uuid().describe('Node UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -126,7 +126,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_update',
         'Update an existing node',
         {
-            uuid: z.string().describe('Node UUID to update'),
+            uuid: z.string().uuid().describe('Node UUID to update'),
             name: z.string().optional().describe('New node name'),
             address: z.string().optional().describe('New address'),
             port: z.number().optional().describe('New port'),
@@ -205,7 +205,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_delete',
         'Delete a node from Remnawave',
         {
-            uuid: z.string().describe('Node UUID to delete'),
+            uuid: z.string().uuid().describe('Node UUID to delete'),
         },
         async ({ uuid }) => {
             try {
@@ -224,7 +224,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_enable',
         'Enable a disabled node',
         {
-            uuid: z.string().describe('Node UUID'),
+            uuid: z.string().uuid().describe('Node UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -240,7 +240,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_disable',
         'Disable a node',
         {
-            uuid: z.string().describe('Node UUID'),
+            uuid: z.string().uuid().describe('Node UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -256,7 +256,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_restart',
         'Restart a specific node. Causes ~12s of downtime on :443 for that node when forceRestart is true',
         {
-            uuid: z.string().describe('Node UUID'),
+            uuid: z.string().uuid().describe('Node UUID'),
             forceRestart: z
                 .boolean()
                 .describe(
@@ -300,7 +300,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_reset_traffic',
         'Reset traffic counter for a node',
         {
-            uuid: z.string().describe('Node UUID'),
+            uuid: z.string().uuid().describe('Node UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -319,7 +319,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
             nodes: z
                 .array(z.object({
                     viewPosition: z.number().describe('Sort position (0-based)'),
-                    uuid: z.string().describe('Node UUID'),
+                    uuid: z.string().uuid().describe('Node UUID'),
                 }))
                 .describe('Ordered array of { viewPosition, uuid } objects'),
         },
@@ -337,9 +337,9 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_bulk_profile_modification',
         'Bulk modify config profile for selected nodes',
         {
-            uuids: z.array(z.string()).describe('Array of node UUIDs'),
-            configProfileUuid: z.string().describe('New config profile UUID'),
-            activeInbounds: z.array(z.string()).describe('Array of inbound UUIDs to enable'),
+            uuids: z.array(z.string().uuid()).describe('Array of node UUIDs'),
+            configProfileUuid: z.string().uuid().describe('New config profile UUID'),
+            activeInbounds: z.array(z.string().uuid()).describe('Array of inbound UUIDs to enable'),
         },
         async (params) => {
             try {
@@ -362,7 +362,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_bulk_actions',
         'Bulk actions on selected nodes (enable/disable/restart/reset traffic)',
         {
-            uuids: z.array(z.string()).describe('Array of node UUIDs'),
+            uuids: z.array(z.string().uuid()).describe('Array of node UUIDs'),
             action: z.enum(['ENABLE', 'DISABLE', 'RESTART', 'RESET_TRAFFIC']).describe('Action to perform'),
         },
         async (params) => {
@@ -379,7 +379,7 @@ export function registerNodeTools(server: McpServer, client: RemnawaveClient, re
         'nodes_bulk_update',
         'Bulk update properties for selected nodes',
         {
-            uuids: z.array(z.string()).describe('Array of node UUIDs'),
+            uuids: z.array(z.string().uuid()).describe('Array of node UUIDs'),
             countryCode: z.string().optional().describe('New country code'),
             consumptionMultiplier: z.number().optional().describe('New consumption multiplier'),
             providerUuid: z.string().optional().describe('Infra provider UUID'),

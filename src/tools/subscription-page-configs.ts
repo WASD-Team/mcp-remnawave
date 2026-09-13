@@ -9,7 +9,7 @@ export function registerSubPageConfigTools(server: McpServer, client: RemnawaveC
     });
 
     server.tool('sub_page_configs_get', 'Get a subscription page config by UUID', {
-        uuid: z.string().describe('Config UUID'),
+        uuid: z.string().uuid().describe('Config UUID'),
     }, async ({ uuid }) => {
         try { return toolResult(await client.getSubscriptionPageConfig(uuid)); } catch (e) { return toolError(e); }
     });
@@ -23,7 +23,7 @@ export function registerSubPageConfigTools(server: McpServer, client: RemnawaveC
     });
 
     server.tool('sub_page_configs_update', 'Update a subscription page configuration', {
-        uuid: z.string().describe('Config UUID'),
+        uuid: z.string().uuid().describe('Config UUID'),
         name: z.string().optional().describe('New name'),
         // Контракт объявляет config как unknown — панель хранит его без разбора структуры,
         // поэтому здесь тоже без схемы. ⚠️ Заменяет конфиг страницы целиком: перед правкой
@@ -37,7 +37,7 @@ export function registerSubPageConfigTools(server: McpServer, client: RemnawaveC
     });
 
     server.tool('sub_page_configs_delete', 'Delete a subscription page configuration', {
-        uuid: z.string().describe('Config UUID'),
+        uuid: z.string().uuid().describe('Config UUID'),
     }, async ({ uuid }) => {
         try { await client.deleteSubscriptionPageConfig(uuid); return toolResult({ success: true, message: `Config ${uuid} deleted` }); } catch (e) { return toolError(e); }
     });
@@ -45,14 +45,14 @@ export function registerSubPageConfigTools(server: McpServer, client: RemnawaveC
     server.tool('sub_page_configs_reorder', 'Reorder subscription page configurations', {
         items: z.array(z.object({
             viewPosition: z.number().describe('Sort position (0-based)'),
-            uuid: z.string().describe('Config UUID'),
+            uuid: z.string().uuid().describe('Config UUID'),
         })).describe('Ordered array of { viewPosition, uuid } objects'),
     }, async (params) => {
         try { return toolResult(await client.reorderSubscriptionPageConfigs(params)); } catch (e) { return toolError(e); }
     });
 
     server.tool('sub_page_configs_clone', 'Clone a subscription page configuration', {
-        cloneFromUuid: z.string().describe('Config UUID to clone'),
+        cloneFromUuid: z.string().uuid().describe('Config UUID to clone'),
     }, async (params) => {
         try { return toolResult(await client.cloneSubscriptionPageConfig(params)); } catch (e) { return toolError(e); }
     });

@@ -9,7 +9,7 @@ export function registerInfraBillingTools(server: McpServer, client: RemnawaveCl
     });
 
     server.tool('billing_provider_get', 'Get a billing provider by UUID', {
-        uuid: z.string().describe('Provider UUID'),
+        uuid: z.string().uuid().describe('Provider UUID'),
     }, async ({ uuid }) => {
         try { return toolResult(await client.getBillingProviderByUuid(uuid)); } catch (e) { return toolError(e); }
     });
@@ -36,7 +36,7 @@ export function registerInfraBillingTools(server: McpServer, client: RemnawaveCl
     });
 
     server.tool('billing_provider_update', 'Update a billing provider', {
-        uuid: z.string().describe('Provider UUID'),
+        uuid: z.string().uuid().describe('Provider UUID'),
         name: z.string().optional().describe('New name'),
         faviconLink: z.string().optional().describe('New favicon URL'),
         loginUrl: z.string().optional().describe('New login page URL'),
@@ -45,34 +45,34 @@ export function registerInfraBillingTools(server: McpServer, client: RemnawaveCl
     });
 
     server.tool('billing_provider_delete', 'Delete a billing provider', {
-        uuid: z.string().describe('Provider UUID'),
+        uuid: z.string().uuid().describe('Provider UUID'),
     }, async ({ uuid }) => {
         try { await client.deleteBillingProvider(uuid); return toolResult({ success: true, message: `Provider ${uuid} deleted` }); } catch (e) { return toolError(e); }
     });
 
     server.tool('billing_node_create', 'Create a billing node', {
-        nodeUuid: z.string().describe('Node UUID'),
-        providerUuid: z.string().describe('Provider UUID'),
+        nodeUuid: z.string().uuid().describe('Node UUID'),
+        providerUuid: z.string().uuid().describe('Provider UUID'),
         nextBillingAt: z.string().optional().describe('Next billing date (ISO 8601)'),
     }, async (params) => {
         try { return toolResult(await client.createBillingNode(params)); } catch (e) { return toolError(e); }
     });
 
     server.tool('billing_node_update', 'Update a billing node', {
-        uuids: z.array(z.string()).describe('Array of billing node UUIDs'),
+        uuids: z.array(z.string().uuid()).describe('Array of billing node UUIDs'),
         nextBillingAt: z.string().describe('New next billing date (ISO 8601)'),
     }, async (params) => {
         try { return toolResult(await client.updateBillingNode(params)); } catch (e) { return toolError(e); }
     });
 
     server.tool('billing_node_delete', 'Delete a billing node', {
-        uuid: z.string().describe('Billing node UUID'),
+        uuid: z.string().uuid().describe('Billing node UUID'),
     }, async ({ uuid }) => {
         try { await client.deleteBillingNode(uuid); return toolResult({ success: true, message: `Billing node ${uuid} deleted` }); } catch (e) { return toolError(e); }
     });
 
     server.tool('billing_history_create', 'Create a billing history entry', {
-        providerUuid: z.string().describe('Provider UUID'),
+        providerUuid: z.string().uuid().describe('Provider UUID'),
         amount: z.number().describe('Amount'),
         billedAt: z.string().describe('Billing date (ISO 8601)'),
     }, async (params) => {
@@ -80,7 +80,7 @@ export function registerInfraBillingTools(server: McpServer, client: RemnawaveCl
     });
 
     server.tool('billing_history_delete', 'Delete a billing history entry', {
-        uuid: z.string().describe('History entry UUID'),
+        uuid: z.string().uuid().describe('History entry UUID'),
     }, async ({ uuid }) => {
         try { await client.deleteBillingHistory(uuid); return toolResult({ success: true, message: `History entry ${uuid} deleted` }); } catch (e) { return toolError(e); }
     });

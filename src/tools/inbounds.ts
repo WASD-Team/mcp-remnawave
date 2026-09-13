@@ -26,7 +26,7 @@ export function registerInboundTools(
         'config_profiles_get',
         'Get a config profile by UUID',
         {
-            uuid: z.string().describe('Config profile UUID'),
+            uuid: z.string().uuid().describe('Config profile UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -56,7 +56,7 @@ export function registerInboundTools(
         'config_profiles_get_inbounds',
         'Get inbounds for a specific config profile',
         {
-            uuid: z.string().describe('Config profile UUID'),
+            uuid: z.string().uuid().describe('Config profile UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -72,7 +72,7 @@ export function registerInboundTools(
         'config_profiles_get_computed_config',
         'Get computed configuration for a config profile',
         {
-            uuid: z.string().describe('Config profile UUID'),
+            uuid: z.string().uuid().describe('Config profile UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -107,7 +107,7 @@ export function registerInboundTools(
         'config_profiles_update',
         'Update a config profile',
         {
-            uuid: z.string().describe('Profile UUID'),
+            uuid: z.string().uuid().describe('Profile UUID'),
             name: z.string().optional().describe('New name'),
             // ⚠️ Тело xray-конфига целиком. Панель принимает его как есть и рестартует xray
             // НА ВСЕХ нодах профиля разом. Для боевого профиля пользоваться
@@ -132,7 +132,7 @@ export function registerInboundTools(
         'config_profiles_delete',
         'Delete a config profile',
         {
-            uuid: z.string().describe('Profile UUID'),
+            uuid: z.string().uuid().describe('Profile UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -150,7 +150,7 @@ export function registerInboundTools(
         {
             items: z.array(z.object({
                 viewPosition: z.number().describe('Sort position (0-based)'),
-                uuid: z.string().describe('Config profile UUID'),
+                uuid: z.string().uuid().describe('Config profile UUID'),
             })).describe('Ordered array of { viewPosition, uuid } objects'),
         },
         async (params) => {

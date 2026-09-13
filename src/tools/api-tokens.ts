@@ -25,7 +25,7 @@ export function registerApiTokenTools(server: McpServer, client: RemnawaveClient
     });
 
     server.tool('api_tokens_delete', 'Delete an API token', {
-        uuid: z.string().describe('Token UUID to delete'),
+        uuid: z.string().uuid().describe('Token UUID to delete'),
     }, async ({ uuid }) => {
         try { await client.deleteApiToken(uuid); return toolResult({ success: true, message: `Token ${uuid} deleted` }); } catch (e) { return toolError(e); }
     });

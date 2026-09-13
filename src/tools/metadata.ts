@@ -5,7 +5,7 @@ import { toolResult, toolError } from './helpers.js';
 
 export function registerMetadataTools(server: McpServer, client: RemnawaveClient, readonly: boolean) {
     server.tool('metadata_node_get', 'Get metadata for a specific node', {
-        uuid: z.string().describe('Node UUID'),
+        uuid: z.string().uuid().describe('Node UUID'),
     }, async ({ uuid }) => {
         try { return toolResult(await client.getNodeMetadata(uuid)); } catch (e) { return toolError(e); }
     });
@@ -19,7 +19,7 @@ export function registerMetadataTools(server: McpServer, client: RemnawaveClient
     if (readonly) return;
 
     server.tool('metadata_node_upsert', 'Create or update metadata for a node', {
-        uuid: z.string().describe('Node UUID'),
+        uuid: z.string().uuid().describe('Node UUID'),
         metadata: z.record(z.unknown()).describe('Metadata key-value pairs'),
     }, async ({ uuid, metadata }) => {
         try { return toolResult(await client.upsertNodeMetadata(uuid, metadata)); } catch (e) { return toolError(e); }

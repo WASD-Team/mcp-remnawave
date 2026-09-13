@@ -131,7 +131,7 @@ export function registerSubscriptionTemplateTools(
         'subscription_templates_get',
         'Get one subscription template. By default returns metadata and size only; pass saveToPath to write the body to a file, or includeContent to inline it',
         {
-            uuid: z.string().describe('Template UUID'),
+            uuid: z.string().uuid().describe('Template UUID'),
             saveToPath: z
                 .string()
                 .optional()
@@ -169,7 +169,7 @@ export function registerSubscriptionTemplateTools(
         'subscription_templates_update_from_file',
         'Deploy a subscription template to the panel from a local file. Reads the file, picks the right field for the template type (base64 YAML or JSON) and PATCHes it — the body never passes through the model context',
         {
-            uuid: z.string().describe('Template UUID (see subscription_templates_list)'),
+            uuid: z.string().uuid().describe('Template UUID (see subscription_templates_list)'),
             filePath: z.string().describe('Absolute path to the template file'),
             name: z.string().optional().describe('New template name'),
         },

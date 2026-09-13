@@ -45,7 +45,7 @@ export function registerBandwidthStatsTools(
         'bandwidth_nodes_top_users',
         'Top users by traffic on one node over a period — who is consuming a specific location',
         {
-            uuid: z.string().describe('Node UUID'),
+            uuid: z.string().uuid().describe('Node UUID'),
             ...period,
             topUsersLimit: z.number().optional().describe('How many top users to return'),
         },
@@ -81,7 +81,7 @@ export function registerBandwidthStatsTools(
         'bandwidth_squad_usage',
         'Bandwidth of one internal squad over a period, per user (cursor-paginated)',
         {
-            uuid: z.string().describe('Internal squad UUID'),
+            uuid: z.string().uuid().describe('Internal squad UUID'),
             ...period,
             minTotalBytes: z
                 .number()
@@ -107,7 +107,7 @@ export function registerBandwidthStatsTools(
         'bandwidth_squad_user_usage',
         'Bandwidth of one user inside one internal squad over a period',
         {
-            squadUuid: z.string().describe('Internal squad UUID'),
+            squadUuid: z.string().uuid().describe('Internal squad UUID'),
             userId: z.string().describe('Numeric user ID (API 3.x has no user uuid)'),
             ...period,
         },

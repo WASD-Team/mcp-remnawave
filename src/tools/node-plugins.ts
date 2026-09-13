@@ -9,7 +9,7 @@ export function registerNodePluginTools(server: McpServer, client: RemnawaveClie
     });
 
     server.tool('node_plugins_get', 'Get a node plugin by UUID', {
-        uuid: z.string().describe('Plugin UUID'),
+        uuid: z.string().uuid().describe('Plugin UUID'),
     }, async ({ uuid }) => {
         try { return toolResult(await client.getNodePlugin(uuid)); } catch (e) { return toolError(e); }
     });
@@ -33,7 +33,7 @@ export function registerNodePluginTools(server: McpServer, client: RemnawaveClie
     });
 
     server.tool('node_plugins_update', 'Update a node plugin (name and/or pluginConfig)', {
-        uuid: z.string().describe('Plugin UUID'),
+        uuid: z.string().uuid().describe('Plugin UUID'),
         name: z.string().optional().describe('New name'),
         pluginConfig: z
             .record(z.unknown())
@@ -61,7 +61,7 @@ export function registerNodePluginTools(server: McpServer, client: RemnawaveClie
     });
 
     server.tool('node_plugins_delete', 'Delete a node plugin', {
-        uuid: z.string().describe('Plugin UUID'),
+        uuid: z.string().uuid().describe('Plugin UUID'),
     }, async ({ uuid }) => {
         try { await client.deleteNodePlugin(uuid); return toolResult({ success: true, message: `Plugin ${uuid} deleted` }); } catch (e) { return toolError(e); }
     });
@@ -69,14 +69,14 @@ export function registerNodePluginTools(server: McpServer, client: RemnawaveClie
     server.tool('node_plugins_reorder', 'Reorder node plugins', {
         items: z.array(z.object({
             viewPosition: z.number().describe('Sort position (0-based)'),
-            uuid: z.string().describe('Plugin UUID'),
+            uuid: z.string().uuid().describe('Plugin UUID'),
         })).describe('Ordered array of { viewPosition, uuid } objects'),
     }, async (params) => {
         try { return toolResult(await client.reorderNodePlugins(params)); } catch (e) { return toolError(e); }
     });
 
     server.tool('node_plugins_clone', 'Clone a node plugin', {
-        cloneFromUuid: z.string().describe('Plugin UUID to clone'),
+        cloneFromUuid: z.string().uuid().describe('Plugin UUID to clone'),
     }, async (params) => {
         try { return toolResult(await client.cloneNodePlugin(params)); } catch (e) { return toolError(e); }
     });

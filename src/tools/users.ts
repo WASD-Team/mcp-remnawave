@@ -446,7 +446,7 @@ export function registerUserTools(server: McpServer, client: RemnawaveClient, re
         'Bulk update squad assignments for selected users',
         {
             userIds: z.array(z.number()).min(1).max(500).describe('Array of numeric user IDs (max 500)'),
-            activeInternalSquads: z.array(z.string()).describe('Squad UUIDs to assign'),
+            activeInternalSquads: z.array(z.string().uuid()).describe('Squad UUIDs to assign'),
         },
         async (params) => {
             try {

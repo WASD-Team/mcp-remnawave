@@ -26,7 +26,7 @@ export function registerSquadTools(
         'squads_accessible_nodes',
         'Get nodes accessible to a specific squad',
         {
-            uuid: z.string().describe('Squad UUID'),
+            uuid: z.string().uuid().describe('Squad UUID'),
         },
         async ({ uuid }) => {
             try {
@@ -45,7 +45,7 @@ export function registerSquadTools(
         'Create a new internal squad',
         {
             name: z.string().describe('Squad name'),
-            inbounds: z.array(z.string()).describe('Array of inbound UUIDs'),
+            inbounds: z.array(z.string().uuid()).describe('Array of inbound UUIDs'),
         },
         async (params) => {
             try {
@@ -61,7 +61,7 @@ export function registerSquadTools(
         'squads_update',
         'Update an internal squad',
         {
-            uuid: z.string().describe('Squad UUID'),
+            uuid: z.string().uuid().describe('Squad UUID'),
             name: z.string().optional().describe('New squad name'),
             // ⚠️ ЗАМЕНА, НЕ ДОБАВЛЕНИЕ: переданный список полностью вытесняет прежний.
             // Пустой массив оставит сквад без инбаундов — его пользователи молча перестанут
@@ -85,7 +85,7 @@ export function registerSquadTools(
         'squads_delete',
         'Delete an internal squad',
         {
-            uuid: z.string().describe('Squad UUID to delete'),
+            uuid: z.string().uuid().describe('Squad UUID to delete'),
         },
         async ({ uuid }) => {
             try {
@@ -104,7 +104,7 @@ export function registerSquadTools(
         'squads_add_users',
         'Add the listed users to an internal squad',
         {
-            squadUuid: z.string().describe('Squad UUID'),
+            squadUuid: z.string().uuid().describe('Squad UUID'),
             userIds: z
                 .array(z.number())
                 .describe('Numeric user IDs to add (API 3.x has no user uuid)'),
@@ -123,7 +123,7 @@ export function registerSquadTools(
         'squads_remove_users',
         'Remove the listed users from an internal squad',
         {
-            squadUuid: z.string().describe('Squad UUID'),
+            squadUuid: z.string().uuid().describe('Squad UUID'),
             userIds: z
                 .array(z.number())
                 .describe('Numeric user IDs to remove (API 3.x has no user uuid)'),
@@ -145,7 +145,7 @@ export function registerSquadTools(
         'squads_add_all_users',
         'DANGER: add EVERY user of the panel to an internal squad',
         {
-            squadUuid: z.string().describe('Squad UUID'),
+            squadUuid: z.string().uuid().describe('Squad UUID'),
         },
         async ({ squadUuid }) => {
             try {
@@ -160,7 +160,7 @@ export function registerSquadTools(
         'squads_remove_all_users',
         'DANGER: remove EVERY user from an internal squad',
         {
-            squadUuid: z.string().describe('Squad UUID'),
+            squadUuid: z.string().uuid().describe('Squad UUID'),
         },
         async ({ squadUuid }) => {
             try {

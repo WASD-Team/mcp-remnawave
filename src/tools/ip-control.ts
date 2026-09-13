@@ -5,7 +5,7 @@ import { toolResult, toolError } from './helpers.js';
 
 export function registerIpControlTools(server: McpServer, client: RemnawaveClient, readonly: boolean) {
     server.tool('ip_control_fetch_ips', 'Fetch active IPs for a user (async job)', {
-        uuid: z.string().describe('User UUID'),
+        uuid: z.string().uuid().describe('User UUID'),
     }, async ({ uuid }) => {
         try { return toolResult(await client.fetchIps(uuid)); } catch (e) { return toolError(e); }
     });
@@ -17,7 +17,7 @@ export function registerIpControlTools(server: McpServer, client: RemnawaveClien
     });
 
     server.tool('ip_control_fetch_users_ips', 'Fetch IPs for all users on a node (async job)', {
-        nodeUuid: z.string().describe('Node UUID'),
+        nodeUuid: z.string().uuid().describe('Node UUID'),
     }, async ({ nodeUuid }) => {
         try { return toolResult(await client.fetchUsersIps(nodeUuid)); } catch (e) { return toolError(e); }
     });
