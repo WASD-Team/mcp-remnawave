@@ -79,8 +79,9 @@ export function registerAllResources(
             mimeType: 'application/json',
         },
         async (uri, params) => {
-            const userId = params.userId as string;
-            const user = await client.getUserById(userId);
+            // Шаблон объявляет {uuid} — параметра `userId` в нём нет вовсе, и прежнее
+            // `params.userId` уходило в запрос как undefined (разбор Codex 13.09.2026).
+            const user = await client.getUserById(params.uuid as string);
             return {
                 contents: [
                     {

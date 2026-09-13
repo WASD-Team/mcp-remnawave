@@ -15,10 +15,16 @@ export function createServer(config: Config): McpServer {
     const client = new RemnawaveClient(config);
 
     // Обёртка проставляет аннотации по имени инструмента и вычищает секреты из ответа —
-    // в одном месте вместо 167 вызовов. Разбор — в src/tools/annotate.ts.
-    registerAllTools(withAnnotations(server), client, config.readonly);
-    registerAllResources(server, client);
-    registerAllPrompts(server);
+    // в одном месте вместо 172 вызовов. Разбор и границы — в src/tools/annotate.ts.
+    // 🔑 Оборачиваем ОДИН раз и дальше пользуемся только обёрнутым сервером: ресурсы ходили
+    // мимо вычистки, и `remnawave://nodes` отдавал приватные ключи Reality. Наружу тоже
+    // возвращаем обёрнутый — иначе любая будущая регистрация в обход createServer снова
+    // окажется нечищеной.
+    const guarded = withAnnotations(server);
 
-    return server;
+    registerAllTools(guarded, client, config.readonly);
+    registerAllResources(guarded, client);
+    registerAllPrompts(guarded);
+
+    return guarded;
 }

@@ -20,6 +20,7 @@ import { registerHwidTools } from '../src/tools/hwid.js';
 import { registerSystemTools } from '../src/tools/system.js';
 import { registerUserTools } from '../src/tools/users.js';
 import { registerBandwidthStatsTools } from '../src/tools/bandwidth-stats.js';
+import { registerAllResources } from '../src/resources/index.js';
 import { withAnnotations } from '../src/tools/annotate.js';
 
 type Handler = (args: any) => Promise<any>;
@@ -393,6 +394,63 @@ nextResponse = { response: { privateKey: 'ЭТОТ-КЛЮЧ-НУЖЕН', publicK
 const gen = await annHandlers.get('system_generate_x25519')!({});
 check('генератор ключей НЕ вычищается — иначе он бесполезен',
     JSON.stringify(gen).includes('ЭТОТ-КЛЮЧ-НУЖЕН'));
+
+// --- Вычистка за пределами `content[].text` (разбор Codex 13.09.2026) -------
+// Прежняя обёртка знала ровно один способ регистрации (`tool`) и ровно одно место в ответе
+// (`content[].text`). Мимо шли РЕСУРСЫ: `remnawave://nodes` отдавал приватные ключи Reality
+// целиком. Ниже — по одной проверке на каждую дыру, которую это открывало.
+const resHandlers = new Map<string, Handler>();
+const resServer: any = {
+    tool: () => {},
+    resource: (name: string, ...rest: any[]) => resHandlers.set(name, rest.pop()),
+    prompt: () => {},
+};
+registerAllResources(withAnnotations(resServer), client);
+
+nextResponse = { response: [{ uuid: 'n1', name: 'ru1', privateKey: 'КЛЮЧ-ИЗ-РЕСУРСА' }] };
+const nodesResource = await resHandlers.get('panel-nodes')!();
+check('ресурс remnawave://nodes тоже вычищается',
+    !JSON.stringify(nodesResource).includes('КЛЮЧ-ИЗ-РЕСУРСА'),
+    String(nodesResource?.contents?.[0]?.text).slice(0, 80));
+check('и остальные поля ресурса на месте',
+    JSON.stringify(nodesResource).includes('ru1'));
+
+// Шаблон объявляет {uuid}; прежний код читал params.userId и слал в панель undefined.
+requests.length = 0;
+nextResponse = { response: { uuid: 'u-1', username: 'ivan' } };
+await resHandlers.get('user-details')!({ href: 'remnawave://users/u-1' }, { uuid: 'u-1' });
+check('ресурс user-details берёт uuid из шаблона, а не несуществующий userId',
+    requests[0]?.url.endsWith('/api/users/u-1'), requests[0]?.url);
+
+// structuredContent — отдельная ветка ответа, JSON.stringify кладёт её в расшифровку так же.
+const structHandlers = new Map<string, Handler>();
+const structServer: any = {
+    tool: (name: string, ...rest: any[]) => structHandlers.set(name, rest.pop()),
+};
+const wrapped = withAnnotations(structServer);
+(wrapped as any).tool('probe_get', 'проба', {}, async () => ({
+    content: [{ type: 'text', text: 'не JSON, трогать нечего' }],
+    structuredContent: { privateKey: 'КЛЮЧ-В-STRUCTURED', name: 'ru1' },
+}));
+const structured = await structHandlers.get('probe_get')!({});
+check('structuredContent вычищается наравне с content',
+    !JSON.stringify(structured).includes('КЛЮЧ-В-STRUCTURED'), JSON.stringify(structured?.structuredContent));
+check('не-JSON текст обёртка не ломает',
+    String(structured?.content?.[0]?.text) === 'не JSON, трогать нечего');
+
+// Аннотации вызывающего обёртка ДОПОЛНЯЕТ. Добавь она второй объект — SDK разобрал бы его
+// как аннотации, а прежние аннотации как схему параметров.
+const mergeMeta = new Map<string, any>();
+const mergeServer: any = {
+    tool: (name: string, ...rest: any[]) => {
+        rest.pop();
+        mergeMeta.set(name, rest[rest.length - 1]);
+    },
+};
+(withAnnotations(mergeServer) as any).tool('probe_get', 'проба', {}, { title: 'Проба' }, async () => ({}));
+check('свои аннотации вызывающего не затираются и не удваиваются',
+    mergeMeta.get('probe_get')?.title === 'Проба' && mergeMeta.get('probe_get')?.readOnlyHint === true,
+    JSON.stringify(mergeMeta.get('probe_get')));
 
 console.log(failed === 0 ? '\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : `\nПРОВАЛОВ: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);
