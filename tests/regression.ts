@@ -20,6 +20,7 @@ import { registerHwidTools } from '../src/tools/hwid.js';
 import { registerSystemTools } from '../src/tools/system.js';
 import { registerUserTools } from '../src/tools/users.js';
 import { registerBandwidthStatsTools } from '../src/tools/bandwidth-stats.js';
+import { registerInboundTools } from '../src/tools/inbounds.js';
 import { registerAllResources } from '../src/resources/index.js';
 import { withAnnotations } from '../src/tools/annotate.js';
 
@@ -60,6 +61,7 @@ registerSubscriptionTools(fakeServer, client);
 registerHwidTools(fakeServer, client, false);
 registerSystemTools(fakeServer, client);
 registerUserTools(fakeServer, client, false);
+registerInboundTools(fakeServer, client, false);
 registerBandwidthStatsTools(fakeServer, client);
 
 let failed = 0;
@@ -451,6 +453,38 @@ const mergeServer: any = {
 check('свои аннотации вызывающего не затираются и не удваиваются',
     mergeMeta.get('probe_get')?.title === 'Проба' && mergeMeta.get('probe_get')?.readOnlyHint === true,
     JSON.stringify(mergeMeta.get('probe_get')));
+
+// ─── заливка конфига с заглушкой вычистки должна ОТКАЗАТЬ ────────────────────────────────
+// 🔴 Класс отказа, ради которого проверка существует: у модели единственный способ править
+// тело конфига — прочитать профиль и залить обратно, а читается он уже без приватных ключей.
+// Заливка такого конфига записала бы «вычищено сервером MCP» вместо ключа Reality и положила
+// бы маскировку на всём парке. Проверяем и отказ, и то, что в сеть при этом НИЧЕГО не ушло.
+requests.length = 0;
+const redactedConfig = {
+    inbounds: [
+        { tag: 'reality-nl', streamSettings: { realitySettings: { privateKey: '«вычищено сервером MCP»' } } },
+    ],
+};
+const refused = await handlers.get('config_profiles_update')!({
+    uuid: '00000000-0000-0000-0000-000000000001',
+    config: redactedConfig,
+});
+check('заливка вычищенного конфига отказывает',
+    refused?.isError === true && /вычищено сервером MCP/.test(JSON.stringify(refused)),
+    JSON.stringify(refused).slice(0, 120));
+check('при отказе в панель не ушло ни одного запроса',
+    requests.length === 0, `запросов: ${requests.length}`);
+
+// Чистый конфиг проходит — иначе проверка заблокировала бы штатную работу.
+requests.length = 0;
+nextResponse = { response: { uuid: 'p1' } };
+await handlers.get('config_profiles_update')!({
+    uuid: '00000000-0000-0000-0000-000000000001',
+    config: { inbounds: [{ tag: 'reality-nl', streamSettings: { realitySettings: { privateKey: 'настоящий-ключ' } } }] },
+});
+check('конфиг без заглушек заливается как раньше',
+    requests.length === 1 && requests[0].method === 'PATCH',
+    JSON.stringify(requests[0]?.method));
 
 console.log(failed === 0 ? '\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ' : `\nПРОВАЛОВ: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);

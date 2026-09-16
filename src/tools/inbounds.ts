@@ -3,6 +3,43 @@ import { z } from 'zod';
 import { RemnawaveClient } from '../client/index.js';
 import { toolResult, toolError } from './helpers.js';
 
+/** Маркер, которым `annotate.ts` заменяет секреты в ответе модели. */
+const REDACTED = '«вычищено сервером MCP»';
+
+/**
+ * 🔴 Ловушка, из-за которой эта проверка существует (16.09.2026).
+ *
+ * Ответы модели проходят вычистку: `privateKey` каждого инбаунда приезжает как REDACTED.
+ * Модели при этом доступен только один способ правки тела конфига — прочитать профиль и
+ * залить его обратно, и он КАТАСТРОФИЧЕН: заглушка записалась бы вместо настоящего ключа
+ * Reality, то есть легла бы вся маскировка на ВСЁМ парке сразу (профиль у нас один).
+ * Снаружи это выглядело бы как «ноды живы, а клиенты не подключаются».
+ *
+ * 🔑 Поэтому отказ здесь, а не предупреждение в описании: описание модель читает, но не
+ * обязана слушаться, а тут физически нет способа испортить конфиг незаметно. Рабочий путь
+ * для тела конфига — `projects/RWXRAY/nodes/deploy-config.py`: он берёт токен из окружения,
+ * сохраняет бэкап, сливает поля локаций из живой панели и сверяет результат после заливки.
+ */
+function findRedacted(value: unknown, path = 'config'): string | null {
+    if (typeof value === 'string') {
+        return value.includes(REDACTED) ? path : null;
+    }
+    if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i += 1) {
+            const hit = findRedacted(value[i], `${path}[${i}]`);
+            if (hit) return hit;
+        }
+        return null;
+    }
+    if (value && typeof value === 'object') {
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+            const hit = findRedacted(v, `${path}.${k}`);
+            if (hit) return hit;
+        }
+    }
+    return null;
+}
+
 export function registerInboundTools(
     server: McpServer,
     client: RemnawaveClient,
@@ -116,10 +153,30 @@ export function registerInboundTools(
             config: z
                 .record(z.string(), z.unknown())
                 .optional()
-                .describe('Full xray config object — replaces the profile config, restarts nodes'),
+                .describe(
+                    'Full xray config object — replaces the profile config and restarts every node '
+                    + 'on the profile. ⛔ Do NOT build it from a profile you read through this MCP: '
+                    + 'private keys come back redacted and you would overwrite them with the '
+                    + 'placeholder. Use projects/RWXRAY/nodes/deploy-config.py for the config body.',
+                ),
         },
         async (params) => {
             try {
+                // Проверка идёт ДО запроса к панели: отказать дешевле, чем откатывать парк.
+                if (params.config) {
+                    const hit = findRedacted(params.config);
+                    if (hit) {
+                        return toolError(
+                            new Error(
+                                `отказ: в ${hit} лежит «${REDACTED}» — это заглушка вычистки, а не `
+                                + 'настоящее значение. Заливка перезаписала бы секрет заглушкой и '
+                                + 'положила бы Reality на всём парке. Тело конфига правится через '
+                                + 'projects/RWXRAY/nodes/deploy-config.py (бэкап, поля локаций из '
+                                + 'живой панели, сверка после заливки).',
+                            ),
+                        );
+                    }
+                }
                 const result = await client.updateConfigProfile(params);
                 return toolResult(result);
             } catch (e) {
