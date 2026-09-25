@@ -27,8 +27,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
  * исключения — если обработчик бросил, ответ формирует SDK мимо этой обёртки.
  */
 
-/** Ключи, значение которых не должно попадать в вывод ни при каких условиях. */
-const SECRET_KEYS = /^(privateKey|private_key|password|secret|secretKey|apiKey|api_key|token|accessToken|refreshToken)$/i;
+/**
+ * Ключи, значение которых не должно попадать в вывод ни при каких условиях.
+ * `vlessUuid`, `trojanPassword`, `ssPassword` — учётные данные подключения человека из объекта
+ * пользователя: точное `password` их не ловит, и `users_get*` отдавал их открытым текстом (25.09.2026).
+ */
+const SECRET_KEYS = /^(privateKey|private_key|password|secret|secretKey|apiKey|api_key|token|accessToken|refreshToken|vlessUuid|trojanPassword|ssPassword)$/i;
 
 /**
  * Инструменты, чей СМЫСЛ — выдать секрет. Для них вычистка отключена: иначе генератор ключей

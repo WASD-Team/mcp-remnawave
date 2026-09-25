@@ -392,6 +392,12 @@ check('приватный ключ вычищен из ответа',
 check('остальные поля ответа не пострадали',
     JSON.stringify(listed).includes('ru1'));
 
+nextResponse = { response: [{ uuid: 'n1', name: 'ru1',
+    vlessUuid: 'VLESS-ЧЕЛОВЕКА', trojanPassword: 'TROJAN-ЧЕЛОВЕКА', ssPassword: 'SS-ЧЕЛОВЕКА' }] };
+const creds = JSON.stringify(await annHandlers.get('nodes_list')!({}));
+check('учётные данные подключения пользователя вычищены',
+    !/VLESS-ЧЕЛОВЕКА|TROJAN-ЧЕЛОВЕКА|SS-ЧЕЛОВЕКА/.test(creds), creds.slice(0, 120));
+
 nextResponse = { response: { privateKey: 'ЭТОТ-КЛЮЧ-НУЖЕН', publicKey: 'pub' } };
 const gen = await annHandlers.get('system_generate_x25519')!({});
 check('генератор ключей НЕ вычищается — иначе он бесполезен',
