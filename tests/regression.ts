@@ -8,6 +8,8 @@
  *
  * Запуск: npm test
  */
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { RemnawaveClient } from '../src/client/index.js';
 import { registerHostTools } from '../src/tools/hosts.js';
 import { registerNodePluginTools } from '../src/tools/node-plugins.js';
@@ -262,21 +264,41 @@ check('restart_all тоже посылает тело',
     JSON.stringify(requests[0]?.body) === '{"forceRestart":false}', JSON.stringify(requests[0]?.body));
 
 // GET с телом — так объявлено в контракте и так реализовано в панели: заголовки идут
-// в матчер правил SRR. Без тела приходило «Validation failed».
-requests.length = 0;
-await handlers.get('subscriptions_get_subpage_config')!({ shortUuid: 'short-1' });
-check('subpage-config: GET с телом даже без заголовков',
-    requests[0]?.method === 'GET' && JSON.stringify(requests[0]?.body) === '{"requestHeaders":{}}',
-    `${requests[0]?.method} ${JSON.stringify(requests[0]?.body)}`);
+// в матчер правил SRR. Без тела приходило «Validation failed». Подменённый fetch тут не
+// годится: настоящий fetch тело у GET отвергает сам, и тест, ловивший вызов fetch,
+// показывал зелёное при сломанном туле. Поэтому — живой локальный сервер.
+const seen: { method?: string; body: string; auth?: string }[] = [];
+const panel = createServer((req, res) => {
+    let raw = '';
+    req.on('data', (chunk) => (raw += chunk));
+    req.on('end', () => {
+        seen.push({ method: req.method, body: raw, auth: req.headers.authorization });
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ response: { subpageConfigUuid: null, webpageAllowed: true } }));
+    });
+});
+await new Promise<void>((resolve) => panel.listen(0, '127.0.0.1', resolve));
+const { port } = panel.address() as AddressInfo;
+const realTransportTools = new Map<string, Handler>();
+registerSubscriptionTools({
+    tool: (name: string, _d: unknown, _s: unknown, handler: Handler) => realTransportTools.set(name, handler),
+} as any, new RemnawaveClient({ baseUrl: `http://127.0.0.1:${port}`, apiToken: 'test-token' } as any));
 
-requests.length = 0;
-await handlers.get('subscriptions_get_subpage_config')!({
+const noHeaders = await realTransportTools.get('subscriptions_get_subpage_config')!({ shortUuid: 'short-1' });
+check('subpage-config: GET с телом реально уходит в сеть',
+    !noHeaders?.isError && seen[0]?.method === 'GET' && seen[0]?.body === '{"requestHeaders":{}}',
+    `${seen[0]?.method} ${seen[0]?.body} ${noHeaders?.isError ? JSON.stringify(noHeaders).slice(0, 120) : ''}`);
+check('и с авторизацией', seen[0]?.auth === 'Bearer test-token');
+
+const withUa = await realTransportTools.get('subscriptions_get_subpage_config')!({
     shortUuid: 'short-1',
     requestHeaders: { 'user-agent': 'FlClash X/v0.4.2' },
 });
 check('переданные заголовки доходят до панели',
-    JSON.stringify(requests[0]?.body) === '{"requestHeaders":{"user-agent":"FlClash X/v0.4.2"}}',
-    JSON.stringify(requests[0]?.body));
+    seen[1]?.body === '{"requestHeaders":{"user-agent":"FlClash X/v0.4.2"}}', seen[1]?.body);
+check('ответ панели разобран',
+    JSON.stringify(withUa).includes('webpageAllowed'), JSON.stringify(withUa).slice(0, 120));
+panel.close();
 
 // --- 9. детали ошибки валидации не должны терятьcя ---------------------------
 // Панель присылает разбор в `errors`, а клиент брал только `message` — и «Validation failed»

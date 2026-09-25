@@ -1,3 +1,5 @@
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { REST_API } from '@remnawave/backend-contract';
 import { Config } from '../config.js';
 
@@ -28,18 +30,15 @@ export class RemnawaveClient {
         body?: unknown,
     ): Promise<T> {
         const url = `${this.baseUrl}${path}`;
-        const options: RequestInit = {
-            method,
-            headers: this.headers,
-        };
-        if (body !== undefined) {
-            options.body = JSON.stringify(body);
-        }
-        const res = await fetch(url, options);
+        const payload = body === undefined ? undefined : JSON.stringify(body);
+        const res = method === 'GET' && payload !== undefined
+            ? await this.sendGetWithBody(url, payload)
+            : await fetch(url, { method, headers: this.headers, body: payload });
+        const text = await res.text();
         if (!res.ok) {
             let errorMessage: string;
             try {
-                const errorBody = (await res.json()) as {
+                const errorBody = JSON.parse(text) as {
                     message?: string;
                     errors?: { path?: unknown[]; message?: string; expected?: string }[];
                 };
@@ -67,8 +66,35 @@ export class RemnawaveClient {
         // На DELETE панель отвечает пустым телом. Безусловный res.json() падал
         // на нём с «Unexpected end of JSON input», и удавшееся удаление
         // выглядело как ошибка — при том что объект уже был удалён.
-        const text = await res.text();
         return (text ? JSON.parse(text) : null) as T;
+    }
+
+    // fetch в Node (undici) тело у GET не отправляет вовсе: бросает
+    // «Request with GET/HEAD method cannot have body» ещё до сети. node:http такого
+    // запрета не знает, поэтому единственный GET с телом (subpage-config) идёт через него.
+    // Тесты, подменявшие fetch, этого не видели — тул был сломан с SAD-176 до 25.09.2026.
+    private sendGetWithBody(url: string, payload: string): Promise<Response> {
+        const target = new URL(url);
+        const send = target.protocol === 'https:' ? httpsRequest : httpRequest;
+        return new Promise((resolve, reject) => {
+            const req = send(target, {
+                method: 'GET',
+                headers: { ...this.headers, 'Content-Length': Buffer.byteLength(payload) },
+            }, (incoming) => {
+                const chunks: Buffer[] = [];
+                incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
+                incoming.on('end', () => {
+                    const status = incoming.statusCode ?? 0;
+                    resolve(new Response(status === 204 ? null : Buffer.concat(chunks), {
+                        status,
+                        statusText: incoming.statusMessage,
+                    }));
+                });
+                incoming.on('error', reject);
+            });
+            req.on('error', reject);
+            req.end(payload);
+        });
     }
 
     // body у GET — не блажь: контракт панели требует тело у GET subpage-config
